@@ -1,0 +1,18 @@
+{
+  "name": "Ford Adventure Photo Booth",
+  "short_name": "Ford PhotoBooth",
+  "description": "Scatta, personalizza e condividi la tua avventura 4x4 Ford allo stand",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0B0F19",
+  "theme_color": "#002C6C",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
