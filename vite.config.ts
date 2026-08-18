@@ -8,6 +8,11 @@ export default defineConfig({
     host: true,
     port: 3000
   },
+  preview: {
+    host: true,
+    port: 8080,
+    allowedHosts: true // Allow DigitalOcean and custom domains
+  },
   build: {
     target: 'esnext',
     outDir: 'dist',
