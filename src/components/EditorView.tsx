@@ -1,9 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { CapturedPhoto, Scenario, StickerItem, FrameItem, FilterPreset, StickerCategory } from '../types';
+import { CapturedPhoto, StickerItem, FilterPreset } from '../types';
 import { STICKERS } from '../data/stickers';
-import { FRAMES } from '../data/frames';
 import { FILTERS } from '../data/filters';
-import { SCENARIOS } from '../data/scenarios';
 import { fabricCanvasManager } from '../services/fabricCanvas';
 import {
   ArrowLeft,
@@ -13,11 +11,7 @@ import {
   Trash2,
   FlipHorizontal,
   Type,
-  Layers,
   Sparkles,
-  Smile,
-  Frame,
-  Image as ImageIcon,
   Sliders,
   BringToFront,
   SendToBack,
@@ -26,56 +20,41 @@ import {
 
 interface EditorViewProps {
   photo: CapturedPhoto;
-  initialScenario: Scenario;
   onBackToCamera: () => void;
   onProceedToExport: (compositeDataUrl: string) => void;
 }
 
-type EditorTab = 'stickers' | 'frames' | 'backgrounds' | 'filters';
+type EditorTab = 'helmets' | 'filters';
 
 export const EditorView: React.FC<EditorViewProps> = ({
   photo,
-  initialScenario,
   onBackToCamera,
   onProceedToExport
 }) => {
   const canvasElementRef = useRef<HTMLCanvasElement>(null);
 
-  const [activeTab, setActiveTab] = useState<EditorTab>('stickers');
-  const [selectedCategory, setSelectedCategory] = useState<StickerCategory>('ford');
-  const [currentScenario, setCurrentScenario] = useState<Scenario>(initialScenario);
-  const [selectedFrameId, setSelectedFrameId] = useState<string>('ford-adventure-tour');
-  const [selectedFilterId, setSelectedFilterId] = useState<string>('normal');
-  const [showOriginalBg, setShowOriginalBg] = useState(false);
+  const [activeTab, setActiveTab] = useState<EditorTab>('helmets');
+  const [selectedFilterId, setSelectedFilterId] = useState<string>('natural');
   const [hasSelection, setHasSelection] = useState(false);
   const [isReady, setIsReady] = useState(false);
 
-  // Initialize Fabric Canvas with layers
+  // Initialize Fabric Canvas
   const initEditor = useCallback(async () => {
     if (!canvasElementRef.current) return;
     setIsReady(false);
 
     await fabricCanvasManager.init(canvasElementRef.current, 1080, 1920);
 
-    // Layer 1: Sfondo (Scenario or Raw)
-    const bgUrl = showOriginalBg ? photo.rawImage : currentScenario.bgUrl;
-    await fabricCanvasManager.setBackground(bgUrl);
+    // Layer 1: User's real captured photo
+    await fabricCanvasManager.setPhoto(photo.dataUrl);
 
-    // Layer 2: Soggetto Scontornato (or full photo if background is original)
-    if (!showOriginalBg) {
-      await fabricCanvasManager.setPersonImage(photo.segmentedPersonImage || photo.rawImage);
-    }
+    // Layer 3: Official Ford Racing Frame (locked on top)
+    await fabricCanvasManager.loadOfficialFrame();
 
-    // Layer 4: Initial Frame Overlay
-    const defaultFrame = FRAMES.find(f => f.id === selectedFrameId);
-    if (defaultFrame && defaultFrame.overlaySvg) {
-      await fabricCanvasManager.setFrame(defaultFrame.overlaySvg);
-    }
-
-    // Auto-suggest 1-2 brand stickers
-    const initialSticker = STICKERS.find(s => s.id === 'bronco-wild') || STICKERS[0];
-    if (initialSticker) {
-      await fabricCanvasManager.addSticker(initialSticker.svgDataUri, initialSticker.defaultScale);
+    // Auto-add first helmet as initial suggestion
+    const defaultHelmet = STICKERS[0];
+    if (defaultHelmet) {
+      await fabricCanvasManager.addHelmetSticker(defaultHelmet.imageSrc, defaultHelmet.defaultScale);
     }
 
     // Selection listener
@@ -87,7 +66,7 @@ export const EditorView: React.FC<EditorViewProps> = ({
     }
 
     setIsReady(true);
-  }, [photo, currentScenario, showOriginalBg, selectedFrameId]);
+  }, [photo]);
 
   useEffect(() => {
     initEditor();
@@ -96,33 +75,9 @@ export const EditorView: React.FC<EditorViewProps> = ({
     };
   }, [initEditor]);
 
-  // Add Sticker to Canvas
-  const handleAddSticker = async (sticker: StickerItem) => {
-    await fabricCanvasManager.addSticker(sticker.svgDataUri, sticker.defaultScale || 0.45);
-  };
-
-  // Change Frame
-  const handleSelectFrame = async (frame: FrameItem) => {
-    setSelectedFrameId(frame.id);
-    await fabricCanvasManager.setFrame(frame.overlaySvg);
-  };
-
-  // Change Scenario Background
-  const handleSelectScenario = async (scenario: Scenario) => {
-    setCurrentScenario(scenario);
-    setShowOriginalBg(false);
-    await fabricCanvasManager.setBackground(scenario.bgUrl);
-  };
-
-  // Toggle Original Real Photo background
-  const handleToggleOriginalBg = async () => {
-    const nextState = !showOriginalBg;
-    setShowOriginalBg(nextState);
-    if (nextState) {
-      await fabricCanvasManager.setBackground(photo.rawImage);
-    } else {
-      await fabricCanvasManager.setBackground(currentScenario.bgUrl);
-    }
+  // Add Helmet Sticker
+  const handleAddHelmet = async (sticker: StickerItem) => {
+    await fabricCanvasManager.addHelmetSticker(sticker.imageSrc, sticker.defaultScale || 0.35);
   };
 
   // Apply Filter
@@ -131,62 +86,52 @@ export const EditorView: React.FC<EditorViewProps> = ({
     fabricCanvasManager.applyFilter(filter);
   };
 
-  // Add Custom Text
+  // Add Text
   const handleAddText = () => {
-    fabricCanvasManager.addText('FORD 4X4 ADVENTURE');
+    fabricCanvasManager.addText('FORD RACING');
   };
 
-  // Complete editing and export
+  // Finish & Export
   const handleComplete = () => {
-    const compositeDataUrl = fabricCanvasManager.exportComposite('jpeg', 0.95);
+    const compositeDataUrl = fabricCanvasManager.exportComposite('jpeg', 0.96);
     onProceedToExport(compositeDataUrl);
   };
 
-  const filteredStickers = STICKERS.filter(s => s.category === selectedCategory);
-
-  const categories: { key: StickerCategory; label: string }[] = [
-    { key: 'ford', label: 'Ford & 4x4' },
-    { key: 'wildlife', label: 'Animali & Orso' },
-    { key: 'adventure', label: 'Avventura' },
-    { key: 'mud', label: 'Fango & Pista' },
-    { key: 'badges', label: 'Badge Stand' }
-  ];
-
   return (
-    <div className="relative w-full h-full flex flex-col bg-ford-dark overflow-hidden select-none">
+    <div className="relative w-full h-full flex flex-col bg-[#080b11] overflow-hidden select-none">
       {/* Top Action Bar */}
-      <div className="relative z-30 flex items-center justify-between px-4 py-3 bg-black/80 backdrop-blur-md border-b border-white/10">
+      <div className="relative z-30 flex items-center justify-between px-4 py-3 bg-black/85 backdrop-blur-md border-b border-white/10">
         {/* Back Button */}
         <button
           onClick={onBackToCamera}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-bold active:scale-95 transition-all"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.08] hover:bg-white/[0.15] text-white text-xs font-semibold active:scale-95 transition-all"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Nuovo Scatto</span>
+          <span>Rifai</span>
         </button>
 
         {/* Action Controls: Undo, Redo, Add Text */}
         <div className="flex items-center gap-1">
           <button
             onClick={() => fabricCanvasManager.undo()}
-            className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white active:scale-90 transition-all"
+            className="p-2 rounded-full bg-white/[0.08] hover:bg-white/[0.15] text-white active:scale-90 transition-all"
             title="Annulla"
           >
-            <RotateCcw className="w-4 h-4" />
+            <RotateCcw className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={() => fabricCanvasManager.redo()}
-            className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white active:scale-90 transition-all"
+            className="p-2 rounded-full bg-white/[0.08] hover:bg-white/[0.15] text-white active:scale-90 transition-all"
             title="Ripristina"
           >
-            <RotateCw className="w-4 h-4" />
+            <RotateCw className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={handleAddText}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-bold active:scale-90 transition-all"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-white/[0.08] hover:bg-white/[0.15] text-white text-xs font-semibold active:scale-90 transition-all"
             title="Aggiungi Testo"
           >
-            <Type className="w-4 h-4" />
+            <Type className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Testo</span>
           </button>
         </div>
@@ -194,25 +139,25 @@ export const EditorView: React.FC<EditorViewProps> = ({
         {/* Done / Proceed Button */}
         <button
           onClick={handleComplete}
-          className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-gradient-to-r from-ford-accent to-orange-500 text-white text-xs font-black uppercase tracking-wider shadow-lg shadow-ford-accent/30 active:scale-95 transition-all"
+          className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-gradient-to-r from-[#002C6C] to-[#0050d8] hover:brightness-110 text-white text-xs font-bold uppercase tracking-wider shadow-[0_0_15px_rgba(0,80,216,0.4)] active:scale-95 transition-all"
         >
           <span>Avanti</span>
           <Check className="w-4 h-4" />
         </button>
       </div>
 
-      {/* Main Canvas Area */}
+      {/* Main Canvas Studio Area */}
       <div className="relative flex-1 w-full h-full flex items-center justify-center p-2 overflow-hidden">
-        {/* 9:16 Canvas Viewport */}
+        {/* 9:16 Canvas Container */}
         <div className="relative w-full max-w-[420px] aspect-story max-h-full flex items-center justify-center rounded-2xl overflow-hidden shadow-2xl border border-white/10 bg-black">
           <canvas
             ref={canvasElementRef}
             className="w-full h-full object-contain"
           />
 
-          {/* Floating Sticker Action Toolbar (appears when a sticker is selected) */}
+          {/* Floating Sticker Action Toolbar (appears when a helmet is selected) */}
           {hasSelection && (
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/85 backdrop-blur-md border border-ford-accent shadow-2xl animate-scaleIn">
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/90 backdrop-blur-md border border-[#0050d8] shadow-[0_0_20px_rgba(0,80,216,0.5)] animate-scaleIn">
               <button
                 onClick={() => fabricCanvasManager.flipActiveObject()}
                 className="p-2 rounded-full hover:bg-white/20 text-white active:scale-90 transition-all"
@@ -246,11 +191,11 @@ export const EditorView: React.FC<EditorViewProps> = ({
           )}
 
           {!isReady && (
-            <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+            <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm">
               <div className="flex flex-col items-center gap-2">
-                <Sparkles className="w-8 h-8 text-ford-accent animate-spin" />
-                <span className="text-xs font-bold text-white uppercase tracking-wider">
-                  Caricamento Editor 4x4...
+                <Sparkles className="w-7 h-7 text-[#0050d8] animate-spin" />
+                <span className="text-xs font-semibold text-gray-300 uppercase tracking-widest">
+                  Caricamento Studio...
                 </span>
               </div>
             </div>
@@ -258,189 +203,82 @@ export const EditorView: React.FC<EditorViewProps> = ({
         </div>
       </div>
 
-      {/* Bottom Multi-Tab Drawer */}
-      <div className="relative z-30 bg-ford-card border-t border-ford-metal flex flex-col max-h-56 pb-2">
+      {/* Bottom Drawer (2 Helmets + Pro Filters) */}
+      <div className="relative z-30 bg-[#0b101d] border-t border-white/10 flex flex-col pb-4 pt-2">
         {/* Navigation Tabs Header */}
-        <div className="flex items-center justify-around border-b border-white/10 px-2 pt-2">
+        <div className="flex items-center justify-center gap-8 border-b border-white/10 px-4 pb-2">
           <button
-            onClick={() => setActiveTab('stickers')}
-            className={`flex items-center gap-1.5 py-2 px-3 text-xs font-bold tracking-wide border-b-2 transition-all ${
-              activeTab === 'stickers'
-                ? 'border-ford-accent text-ford-accent'
-                : 'border-transparent text-gray-400 hover:text-white'
+            onClick={() => setActiveTab('helmets')}
+            className={`flex items-center gap-2 py-1 px-3 text-xs font-bold tracking-wider uppercase border-b-2 transition-all ${
+              activeTab === 'helmets'
+                ? 'border-[#0050d8] text-white shadow-sm'
+                : 'border-transparent text-gray-400 hover:text-gray-200'
             }`}
           >
-            <Smile className="w-4 h-4" />
-            <span>Sticker</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('frames')}
-            className={`flex items-center gap-1.5 py-2 px-3 text-xs font-bold tracking-wide border-b-2 transition-all ${
-              activeTab === 'frames'
-                ? 'border-ford-accent text-ford-accent'
-                : 'border-transparent text-gray-400 hover:text-white'
-            }`}
-          >
-            <Frame className="w-4 h-4" />
-            <span>Cornici</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('backgrounds')}
-            className={`flex items-center gap-1.5 py-2 px-3 text-xs font-bold tracking-wide border-b-2 transition-all ${
-              activeTab === 'backgrounds'
-                ? 'border-ford-accent text-ford-accent'
-                : 'border-transparent text-gray-400 hover:text-white'
-            }`}
-          >
-            <ImageIcon className="w-4 h-4" />
-            <span>Sfondi 4x4</span>
+            <span>Caschi Ufficiali (2)</span>
           </button>
 
           <button
             onClick={() => setActiveTab('filters')}
-            className={`flex items-center gap-1.5 py-2 px-3 text-xs font-bold tracking-wide border-b-2 transition-all ${
+            className={`flex items-center gap-2 py-1 px-3 text-xs font-bold tracking-wider uppercase border-b-2 transition-all ${
               activeTab === 'filters'
-                ? 'border-ford-accent text-ford-accent'
-                : 'border-transparent text-gray-400 hover:text-white'
+                ? 'border-[#0050d8] text-white shadow-sm'
+                : 'border-transparent text-gray-400 hover:text-gray-200'
             }`}
           >
-            <Sliders className="w-4 h-4" />
-            <span>Filtri</span>
+            <Sliders className="w-3.5 h-3.5" />
+            <span>Filtri Pro</span>
           </button>
         </div>
 
-        {/* Tab 1: Stickers Content */}
-        {activeTab === 'stickers' && (
-          <div className="flex flex-col p-2 gap-2 overflow-hidden">
-            {/* Category Pills */}
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
-              {categories.map(cat => (
-                <button
-                  key={cat.key}
-                  onClick={() => setSelectedCategory(cat.key)}
-                  className={`px-3 py-1 rounded-full text-[11px] font-bold tracking-wide whitespace-nowrap transition-all ${
-                    selectedCategory === cat.key
-                      ? 'bg-ford-accent text-white shadow-md'
-                      : 'bg-black/40 text-gray-400 hover:text-white border border-white/10'
-                  }`}
-                >
-                  {cat.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Sticker Grid Items */}
-            <div className="flex items-center gap-3 overflow-x-auto no-scrollbar py-1">
-              {filteredStickers.map(sticker => (
-                <button
-                  key={sticker.id}
-                  onClick={() => handleAddSticker(sticker)}
-                  className="flex-shrink-0 flex flex-col items-center justify-center p-2 rounded-xl bg-black/40 hover:bg-black/60 border border-white/10 hover:border-ford-accent transition-all active:scale-95 group w-20 h-20"
-                >
+        {/* Tab 1: 2 Official Helmets */}
+        {activeTab === 'helmets' && (
+          <div className="flex items-center justify-center gap-4 px-4 pt-3">
+            {STICKERS.map((sticker) => (
+              <button
+                key={sticker.id}
+                onClick={() => handleAddHelmet(sticker)}
+                className="flex-1 max-w-[180px] flex flex-col items-center p-3 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 hover:border-[#0050d8] transition-all active:scale-95 group shadow-lg"
+              >
+                <div className="relative w-20 h-16 flex items-center justify-center mb-1.5">
                   <img
-                    src={sticker.svgDataUri}
+                    src={sticker.imageSrc}
                     alt={sticker.name}
-                    className="max-w-[50px] max-h-[50px] object-contain transition-transform group-hover:scale-110"
+                    className="max-h-full max-w-full object-contain transition-transform group-hover:scale-110 drop-shadow-md"
                   />
-                  <span className="text-[9px] text-gray-300 truncate w-full text-center mt-1">
-                    {sticker.name}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Tab 2: Frames Content */}
-        {activeTab === 'frames' && (
-          <div className="flex items-center gap-3 p-3 overflow-x-auto no-scrollbar">
-            {FRAMES.map(frame => {
-              const isSelected = frame.id === selectedFrameId;
-              return (
-                <button
-                  key={frame.id}
-                  onClick={() => handleSelectFrame(frame)}
-                  className={`flex-shrink-0 flex flex-col items-center justify-center p-2.5 rounded-xl border text-center transition-all w-28 h-24 ${
-                    isSelected
-                      ? 'bg-ford-blue/60 border-ford-accent ring-2 ring-ford-accent ring-offset-1 ring-offset-black text-white'
-                      : 'bg-black/40 border-white/10 text-gray-400 hover:text-white'
-                  }`}
-                >
-                  <Frame className={`w-6 h-6 mb-1 ${isSelected ? 'text-ford-accent' : 'text-gray-400'}`} />
-                  <span className="text-[11px] font-bold truncate w-full">{frame.name}</span>
-                  <span className="text-[9px] text-gray-400 truncate w-full">{frame.styleName}</span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Tab 3: Backgrounds Content */}
-        {activeTab === 'backgrounds' && (
-          <div className="flex items-center gap-3 p-3 overflow-x-auto no-scrollbar">
-            {/* Toggle Real Original Background */}
-            <button
-              onClick={handleToggleOriginalBg}
-              className={`flex-shrink-0 flex flex-col items-center justify-center p-2.5 rounded-xl border text-center transition-all w-32 h-24 ${
-                showOriginalBg
-                  ? 'bg-ford-accent/40 border-ford-accent ring-2 ring-ford-accent text-white'
-                  : 'bg-black/40 border-white/10 text-gray-400 hover:text-white'
-              }`}
-            >
-              <ImageIcon className="w-6 h-6 mb-1 text-emerald-400" />
-              <span className="text-[11px] font-bold">Foto Reale</span>
-              <span className="text-[9px] text-gray-400">Senza sfondo AI</span>
-            </button>
-
-            {/* 4x4 Scenarios */}
-            {SCENARIOS.map(scen => {
-              const isSelected = scen.id === currentScenario.id && !showOriginalBg;
-              return (
-                <button
-                  key={scen.id}
-                  onClick={() => handleSelectScenario(scen)}
-                  className={`relative flex-shrink-0 w-32 h-24 rounded-xl overflow-hidden border text-left transition-all ${
-                    isSelected
-                      ? 'border-ford-accent ring-2 ring-ford-accent scale-105 shadow-xl'
-                      : 'border-white/10 opacity-70 hover:opacity-100'
-                  }`}
-                >
-                  <img
-                    src={scen.thumbnailUrl}
-                    alt={scen.name}
-                    className="absolute inset-0 w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
-                  <div className="absolute bottom-1.5 left-1.5 right-1.5">
-                    <div className="text-[10px] font-black text-white truncate">{scen.name}</div>
-                    <div className="text-[8px] text-ford-accent font-bold uppercase">{scen.vehicle}</div>
+                  <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[#0050d8] text-white flex items-center justify-center shadow-md">
+                    <Plus className="w-3 h-3" />
                   </div>
-                </button>
-              );
-            })}
+                </div>
+                <div className="text-[11px] font-bold text-white truncate w-full text-center">
+                  {sticker.name}
+                </div>
+                <div className="text-[9px] text-[#4d88ff] truncate w-full text-center">
+                  {sticker.subtitle}
+                </div>
+              </button>
+            ))}
           </div>
         )}
 
-        {/* Tab 4: Filters Content */}
+        {/* Tab 2: Pro Photography Filters */}
         {activeTab === 'filters' && (
-          <div className="flex items-center gap-3 p-3 overflow-x-auto no-scrollbar">
-            {FILTERS.map(filter => {
+          <div className="flex items-center gap-3 px-4 pt-3 overflow-x-auto no-scrollbar">
+            {FILTERS.map((filter) => {
               const isSelected = filter.id === selectedFilterId;
               return (
                 <button
                   key={filter.id}
                   onClick={() => handleApplyFilter(filter)}
-                  className={`flex-shrink-0 flex flex-col items-center justify-center p-2.5 rounded-xl border text-center transition-all w-28 h-24 ${
+                  className={`flex-shrink-0 flex flex-col items-center justify-center p-2.5 rounded-xl border text-center transition-all w-24 h-20 ${
                     isSelected
-                      ? 'bg-ford-accent/30 border-ford-accent ring-2 ring-ford-accent text-white'
-                      : 'bg-black/40 border-white/10 text-gray-400 hover:text-white'
+                      ? 'bg-[#002C6C]/60 border-[#0050d8] ring-2 ring-[#0050d8] text-white shadow-lg'
+                      : 'bg-white/[0.04] border-white/10 text-gray-400 hover:text-white'
                   }`}
                 >
-                  <Sliders className={`w-5 h-5 mb-1 ${isSelected ? 'text-ford-accent' : 'text-gray-400'}`} />
-                  <span className="text-[11px] font-bold truncate w-full">{filter.name}</span>
-                  <span className="text-[9px] text-gray-400 truncate w-full">{filter.toneDescription}</span>
+                  <Sliders className={`w-4 h-4 mb-1 ${isSelected ? 'text-[#4d88ff]' : 'text-gray-400'}`} />
+                  <span className="text-[10px] font-bold truncate w-full">{filter.name}</span>
+                  <span className="text-[8px] text-gray-400 truncate w-full">{filter.subtitle}</span>
                 </button>
               );
             })}

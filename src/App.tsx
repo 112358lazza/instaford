@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { AppStep, Scenario, CapturedPhoto } from './types';
-import { SCENARIOS } from './data/scenarios';
+import { AppStep, CapturedPhoto } from './types';
 import { LandingScreen } from './components/LandingScreen';
 import { CameraView } from './components/CameraView';
 import { EditorView } from './components/EditorView';
@@ -9,7 +8,6 @@ import { StandModal } from './components/StandModal';
 
 export const App: React.FC = () => {
   const [currentStep, setCurrentStep] = useState<AppStep>('landing');
-  const [selectedScenario, setSelectedScenario] = useState<Scenario>(SCENARIOS[0]);
   const [capturedPhoto, setCapturedPhoto] = useState<CapturedPhoto | null>(null);
   const [compositeDataUrl, setCompositeDataUrl] = useState<string | null>(null);
   const [isStandModalOpen, setIsStandModalOpen] = useState(false);
@@ -39,37 +37,32 @@ export const App: React.FC = () => {
   };
 
   return (
-    <main className="relative w-full h-full max-w-lg mx-auto bg-black flex flex-col overflow-hidden shadow-2xl">
+    <main className="relative w-full h-full max-w-lg mx-auto bg-[#080b11] flex flex-col overflow-hidden shadow-2xl">
       {/* Screen 1: Landing Page */}
       {currentStep === 'landing' && (
         <LandingScreen
           onStart={handleStartExperience}
           onOpenStandModal={() => setIsStandModalOpen(true)}
-          selectedScenario={selectedScenario}
-          onSelectScenario={setSelectedScenario}
         />
       )}
 
-      {/* Screen 2: Real-time Camera & Live AI Segmentation */}
+      {/* Screen 2: Real-time Camera with Live Ford Racing Frame Overlay */}
       {currentStep === 'camera' && (
         <CameraView
-          currentScenario={selectedScenario}
-          onSelectScenario={setSelectedScenario}
           onPhotoCaptured={handlePhotoCaptured}
         />
       )}
 
-      {/* Screen 3: Post-Capture Fabric.js Editor Studio */}
+      {/* Screen 3: Post-Capture Editor with 2 Official Helmets */}
       {currentStep === 'editor' && capturedPhoto && (
         <EditorView
           photo={capturedPhoto}
-          initialScenario={selectedScenario}
           onBackToCamera={handleBackToCamera}
           onProceedToExport={handleProceedToExport}
         />
       )}
 
-      {/* Screen 4: High-Res Export & Web Share API Screen */}
+      {/* Screen 4: High-Res Export & Instagram Stories Share */}
       {currentStep === 'export' && compositeDataUrl && (
         <ExportView
           compositeDataUrl={compositeDataUrl}

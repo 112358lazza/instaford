@@ -1,10 +1,10 @@
 import * as fabric from 'fabric';
 import { FilterPreset } from '../types';
+import { OFFICIAL_FRAME } from '../data/frames';
 
 export class FabricCanvasManager {
   private canvas: fabric.Canvas | null = null;
-  private bgObject: fabric.FabricImage | null = null;
-  private personObject: fabric.FabricImage | null = null;
+  private photoObject: fabric.FabricImage | null = null;
   private frameObject: fabric.FabricImage | null = null;
   private history: string[] = [];
   private historyIndex = -1;
@@ -20,22 +20,22 @@ export class FabricCanvasManager {
     this.canvas = new fabric.Canvas(canvasElement, {
       width,
       height,
-      backgroundColor: '#0b0f19',
+      backgroundColor: '#080b11',
       preserveObjectStacking: true,
       selection: true
     });
 
-    // Configure touch and interaction defaults for mobile
+    // Configure luxury touch and interaction controls
     fabric.FabricObject.ownDefaults = {
       ...fabric.FabricObject.ownDefaults,
-      cornerColor: '#FF4A00',
+      cornerColor: '#0050d8',
       cornerStrokeColor: '#ffffff',
-      borderColor: '#002C6C',
-      cornerSize: 24,
+      borderColor: '#0050d8',
+      cornerSize: 28,
       cornerStyle: 'circle',
       transparentCorners: false,
       borderScaleFactor: 2.5,
-      padding: 10
+      padding: 12
     };
 
     this.canvas.on('object:modified', () => {
@@ -43,7 +43,7 @@ export class FabricCanvasManager {
     });
 
     this.canvas.on('object:added', (e) => {
-      if (!this.isStateLocked && e.target !== this.bgObject && e.target !== this.frameObject) {
+      if (!this.isStateLocked && e.target !== this.photoObject && e.target !== this.frameObject) {
         this.saveState();
       }
     });
@@ -60,31 +60,37 @@ export class FabricCanvasManager {
   }
 
   /**
-   * Sets or updates Layer 1: Background Scene Image
+   * Sets Layer 1: Full-Frame Real Captured Photo (fitted/centered in 9:16)
    */
-  async setBackground(bgDataUri: string): Promise<void> {
+  async setPhoto(photoDataUrl: string): Promise<void> {
     if (!this.canvas) return;
 
-    if (this.bgObject) {
-      this.canvas.remove(this.bgObject);
-      this.bgObject = null;
+    if (this.photoObject) {
+      this.canvas.remove(this.photoObject);
+      this.photoObject = null;
     }
 
     try {
-      const img = await fabric.FabricImage.fromURL(bgDataUri, {
+      const img = await fabric.FabricImage.fromURL(photoDataUrl, {
         crossOrigin: 'anonymous'
       });
 
       const canvasWidth = this.canvas.getWidth();
       const canvasHeight = this.canvas.getHeight();
 
+      const imgW = img.width || canvasWidth;
+      const imgH = img.height || canvasHeight;
+
+      // Cover scaling for 9:16
+      const scale = Math.max(canvasWidth / imgW, canvasHeight / imgH);
+
       img.set({
-        originX: 'left',
-        originY: 'top',
-        left: 0,
-        top: 0,
-        scaleX: canvasWidth / (img.width || canvasWidth),
-        scaleY: canvasHeight / (img.height || canvasHeight),
+        originX: 'center',
+        originY: 'center',
+        left: canvasWidth / 2,
+        top: canvasHeight / 2,
+        scaleX: scale,
+        scaleY: scale,
         selectable: false,
         evented: false,
         hasControls: false,
@@ -92,114 +98,18 @@ export class FabricCanvasManager {
         lockMovementY: true
       });
 
-      this.bgObject = img;
+      this.photoObject = img;
       this.canvas.insertAt(0, img);
       this.canvas.requestRenderAll();
     } catch (err) {
-      console.warn('Error loading background in Fabric:', err);
+      console.warn('Error loading photo in Fabric:', err);
     }
   }
 
   /**
-   * Sets Layer 2: Person Segmented Cutout
+   * Sets Layer 3: Official Ford Racing Frame Overlay
    */
-  async setPersonImage(personDataUri: string): Promise<void> {
-    if (!this.canvas) return;
-
-    if (this.personObject) {
-      this.canvas.remove(this.personObject);
-      this.personObject = null;
-    }
-
-    try {
-      const img = await fabric.FabricImage.fromURL(personDataUri, {
-        crossOrigin: 'anonymous'
-      });
-
-      const canvasWidth = this.canvas.getWidth();
-      const canvasHeight = this.canvas.getHeight();
-
-      // Position person near bottom center of the 9:16 frame
-      const imgW = img.width || canvasWidth;
-      const imgH = img.height || canvasHeight;
-      const scale = Math.min((canvasWidth * 0.95) / imgW, (canvasHeight * 0.85) / imgH);
-
-      img.set({
-        originX: 'center',
-        originY: 'bottom',
-        left: canvasWidth / 2,
-        top: canvasHeight - 20,
-        scaleX: scale,
-        scaleY: scale,
-        selectable: true,
-        hasControls: true,
-        cornerColor: '#00d2d3',
-        borderColor: '#00d2d3'
-      });
-
-      this.personObject = img;
-      
-      // Person goes above background (index 1)
-      const targetIndex = this.bgObject ? 1 : 0;
-      this.canvas.insertAt(targetIndex, img);
-      this.canvas.requestRenderAll();
-    } catch (err) {
-      console.warn('Error loading person image in Fabric:', err);
-    }
-  }
-
-  /**
-   * Adds an interactive sticker on Layer 3
-   */
-  async addSticker(svgDataUri: string, initialScale = 0.5): Promise<void> {
-    if (!this.canvas) return;
-
-    try {
-      const img = await fabric.FabricImage.fromURL(svgDataUri, {
-        crossOrigin: 'anonymous'
-      });
-
-      const canvasWidth = this.canvas.getWidth();
-      const canvasHeight = this.canvas.getHeight();
-
-      // Random slight offset around upper-mid frame
-      const offsetX = (Math.random() - 0.5) * 120;
-      const offsetY = (Math.random() - 0.5) * 120;
-
-      img.set({
-        originX: 'center',
-        originY: 'center',
-        left: canvasWidth / 2 + offsetX,
-        top: canvasHeight * 0.35 + offsetY,
-        scaleX: initialScale,
-        scaleY: initialScale,
-        selectable: true,
-        hasControls: true,
-        cornerColor: '#FF4A00',
-        cornerStrokeColor: '#ffffff',
-        borderColor: '#FF4A00',
-        cornerSize: 26,
-        padding: 8
-      });
-
-      this.canvas.add(img);
-
-      // Make sure frame overlay stays above stickers
-      if (this.frameObject) {
-        this.canvas.bringObjectToFront(this.frameObject);
-      }
-
-      this.canvas.setActiveObject(img);
-      this.canvas.requestRenderAll();
-    } catch (err) {
-      console.warn('Error adding sticker to Fabric:', err);
-    }
-  }
-
-  /**
-   * Sets Layer 4: Foreground Frame Overlay
-   */
-  async setFrame(overlaySvgDataUri: string): Promise<void> {
+  async loadOfficialFrame(): Promise<void> {
     if (!this.canvas) return;
 
     if (this.frameObject) {
@@ -207,13 +117,8 @@ export class FabricCanvasManager {
       this.frameObject = null;
     }
 
-    if (!overlaySvgDataUri) {
-      this.canvas.requestRenderAll();
-      return;
-    }
-
     try {
-      const img = await fabric.FabricImage.fromURL(overlaySvgDataUri, {
+      const img = await fabric.FabricImage.fromURL(OFFICIAL_FRAME.imageSrc, {
         crossOrigin: 'anonymous'
       });
 
@@ -244,9 +149,54 @@ export class FabricCanvasManager {
   }
 
   /**
+   * Adds an interactive helmet sticker
+   */
+  async addHelmetSticker(imageSrc: string, initialScale = 0.35): Promise<void> {
+    if (!this.canvas) return;
+
+    try {
+      const img = await fabric.FabricImage.fromURL(imageSrc, {
+        crossOrigin: 'anonymous'
+      });
+
+      const canvasWidth = this.canvas.getWidth();
+      const canvasHeight = this.canvas.getHeight();
+
+      // Position around upper-center area (where head usually is in portrait photo)
+      img.set({
+        originX: 'center',
+        originY: 'center',
+        left: canvasWidth / 2,
+        top: canvasHeight * 0.4,
+        scaleX: initialScale,
+        scaleY: initialScale,
+        selectable: true,
+        hasControls: true,
+        cornerColor: '#0050d8',
+        cornerStrokeColor: '#ffffff',
+        borderColor: '#0050d8',
+        cornerSize: 28,
+        padding: 10
+      });
+
+      this.canvas.add(img);
+
+      // Keep official frame on top of all stickers
+      if (this.frameObject) {
+        this.canvas.bringObjectToFront(this.frameObject);
+      }
+
+      this.canvas.setActiveObject(img);
+      this.canvas.requestRenderAll();
+    } catch (err) {
+      console.warn('Error adding helmet sticker to Fabric:', err);
+    }
+  }
+
+  /**
    * Adds custom text caption
    */
-  addText(text = 'FORD ADVENTURE 4X4'): void {
+  addText(text = 'FORD RACING'): void {
     if (!this.canvas) return;
 
     const canvasWidth = this.canvas.getWidth();
@@ -254,17 +204,18 @@ export class FabricCanvasManager {
 
     const iText = new fabric.IText(text, {
       left: canvasWidth / 2,
-      top: canvasHeight * 0.75,
+      top: canvasHeight * 0.78,
       originX: 'center',
       originY: 'center',
-      fontFamily: 'Impact, sans-serif',
-      fontSize: 48,
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontWeight: 'bold',
+      fontSize: 44,
       fill: '#ffffff',
-      stroke: '#002C6C',
-      strokeWidth: 3,
+      stroke: '#080b11',
+      strokeWidth: 2,
       textAlign: 'center',
-      cornerColor: '#FF4A00',
-      borderColor: '#FF4A00',
+      cornerColor: '#0050d8',
+      borderColor: '#0050d8',
       padding: 10
     });
 
@@ -282,7 +233,7 @@ export class FabricCanvasManager {
   deleteActiveObject(): void {
     if (!this.canvas) return;
     const active = this.canvas.getActiveObject();
-    if (active && active !== this.bgObject && active !== this.frameObject) {
+    if (active && active !== this.photoObject && active !== this.frameObject) {
       this.canvas.remove(active);
       this.canvas.discardActiveObject();
       this.canvas.requestRenderAll();
@@ -290,7 +241,7 @@ export class FabricCanvasManager {
   }
 
   /**
-   * Flips the currently active object horizontally
+   * Flips active helmet horizontally
    */
   flipActiveObject(): void {
     if (!this.canvas) return;
@@ -302,12 +253,12 @@ export class FabricCanvasManager {
   }
 
   /**
-   * Moves active object up one layer
+   * Layering: Forward / Backward
    */
   bringActiveForward(): void {
     if (!this.canvas) return;
     const active = this.canvas.getActiveObject();
-    if (active && active !== this.bgObject && active !== this.frameObject) {
+    if (active && active !== this.photoObject && active !== this.frameObject) {
       this.canvas.bringObjectForward(active);
       if (this.frameObject) {
         this.canvas.bringObjectToFront(this.frameObject);
@@ -316,49 +267,42 @@ export class FabricCanvasManager {
     }
   }
 
-  /**
-   * Moves active object down one layer
-   */
   sendActiveBackward(): void {
     if (!this.canvas) return;
     const active = this.canvas.getActiveObject();
-    if (active && active !== this.bgObject && active !== this.frameObject) {
+    if (active && active !== this.photoObject && active !== this.frameObject) {
       this.canvas.sendObjectBackwards(active);
-      // Ensure background stays at very bottom
-      if (this.bgObject) {
-        this.canvas.sendObjectToBack(this.bgObject);
+      if (this.photoObject) {
+        this.canvas.sendObjectToBack(this.photoObject);
       }
       this.canvas.requestRenderAll();
     }
   }
 
   /**
-   * Applies color adjustments & filters across canvas
+   * Applies photography filters to the photo object
    */
   applyFilter(preset: FilterPreset): void {
-    if (!this.canvas) return;
-    // We can apply filter adjustments to person and background images
-    const objects = [this.bgObject, this.personObject].filter(Boolean) as fabric.FabricImage[];
-    
-    objects.forEach(obj => {
-      obj.filters = [];
-      if (preset.id === 'noir-expedition') {
-        obj.filters.push(new fabric.filters.Grayscale());
-      }
-      if (preset.fabricFilterParams) {
-        if (preset.fabricFilterParams.brightness) {
-          obj.filters.push(new fabric.filters.Brightness({ brightness: preset.fabricFilterParams.brightness }));
-        }
-        if (preset.fabricFilterParams.contrast) {
-          obj.filters.push(new fabric.filters.Contrast({ contrast: preset.fabricFilterParams.contrast }));
-        }
-        if (preset.fabricFilterParams.saturation) {
-          obj.filters.push(new fabric.filters.Saturation({ saturation: preset.fabricFilterParams.saturation }));
-        }
-      }
-      obj.applyFilters();
-    });
+    if (!this.canvas || !this.photoObject) return;
 
+    this.photoObject.filters = [];
+
+    if (preset.fabricFilterParams) {
+      if (preset.fabricFilterParams.grayscale) {
+        this.photoObject.filters.push(new fabric.filters.Grayscale());
+      }
+      if (preset.fabricFilterParams.brightness) {
+        this.photoObject.filters.push(new fabric.filters.Brightness({ brightness: preset.fabricFilterParams.brightness }));
+      }
+      if (preset.fabricFilterParams.contrast) {
+        this.photoObject.filters.push(new fabric.filters.Contrast({ contrast: preset.fabricFilterParams.contrast }));
+      }
+      if (preset.fabricFilterParams.saturation) {
+        this.photoObject.filters.push(new fabric.filters.Saturation({ saturation: preset.fabricFilterParams.saturation }));
+      }
+    }
+
+    this.photoObject.applyFilters();
     this.canvas.requestRenderAll();
   }
 
@@ -399,14 +343,13 @@ export class FabricCanvasManager {
   /**
    * Exports full high-resolution 1080x1920 9:16 Composite Image
    */
-  exportComposite(format: 'jpeg' | 'png' = 'jpeg', quality = 0.95): string {
+  exportComposite(format: 'jpeg' | 'png' = 'jpeg', quality = 0.96): string {
     if (!this.canvas) return '';
 
-    // Deselect active object before exporting
+    // Deselect active object
     this.canvas.discardActiveObject();
     this.canvas.requestRenderAll();
 
-    // Export with high multiplier to guarantee 1080x1920 crispness
     const currentWidth = this.canvas.getWidth();
     const multiplier = 1080 / currentWidth;
 
@@ -423,8 +366,7 @@ export class FabricCanvasManager {
       this.canvas.dispose();
       this.canvas = null;
     }
-    this.bgObject = null;
-    this.personObject = null;
+    this.photoObject = null;
     this.frameObject = null;
     this.history = [];
     this.historyIndex = -1;
