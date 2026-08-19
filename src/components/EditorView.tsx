@@ -32,6 +32,7 @@ export const EditorView: React.FC<EditorViewProps> = ({
   onProceedToExport
 }) => {
   const canvasElementRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const [activeTab, setActiveTab] = useState<EditorTab>('helmets');
   const [selectedFilterId, setSelectedFilterId] = useState<string>('natural');
@@ -40,18 +41,23 @@ export const EditorView: React.FC<EditorViewProps> = ({
 
   // Initialize Fabric Canvas
   const initEditor = useCallback(async () => {
-    if (!canvasElementRef.current) return;
+    if (!canvasElementRef.current || !containerRef.current) return;
     setIsReady(false);
 
-    await fabricCanvasManager.init(canvasElementRef.current, 1080, 1920);
+    await fabricCanvasManager.init(
+      canvasElementRef.current,
+      containerRef.current,
+      1080,
+      1920
+    );
 
     // Layer 1: User's real captured photo
     await fabricCanvasManager.setPhoto(photo.dataUrl);
 
-    // Layer 3: Official Ford Racing Frame (locked on top)
+    // Layer 3: Official Ford Racing Frame (locked on top, touch passes through)
     await fabricCanvasManager.loadOfficialFrame();
 
-    // Auto-add first helmet as initial suggestion
+    // Auto-add first helmet
     const defaultHelmet = STICKERS[0];
     if (defaultHelmet) {
       await fabricCanvasManager.addHelmetSticker(defaultHelmet.imageSrc, defaultHelmet.defaultScale);
@@ -70,14 +76,24 @@ export const EditorView: React.FC<EditorViewProps> = ({
 
   useEffect(() => {
     initEditor();
+
+    const handleResize = () => {
+      fabricCanvasManager.updateCanvasDimensions();
+    };
+
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+
     return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
       fabricCanvasManager.dispose();
     };
   }, [initEditor]);
 
   // Add Helmet Sticker
   const handleAddHelmet = async (sticker: StickerItem) => {
-    await fabricCanvasManager.addHelmetSticker(sticker.imageSrc, sticker.defaultScale || 0.35);
+    await fabricCanvasManager.addHelmetSticker(sticker.imageSrc, sticker.defaultScale || 0.4);
   };
 
   // Apply Filter
@@ -149,8 +165,11 @@ export const EditorView: React.FC<EditorViewProps> = ({
 
       {/* Main Canvas Studio Area */}
       <div className="relative flex-1 w-full h-full flex items-center justify-center p-2 sm:p-3 overflow-hidden">
-        {/* 9:16 Canvas Container */}
-        <div className="relative w-full max-w-[420px] aspect-story max-h-full flex items-center justify-center rounded-[24px] overflow-hidden shadow-[0_25px_60px_rgba(0,0,0,0.8)] border border-white/10 bg-black">
+        {/* 9:16 Interactive Canvas Container with Full Touch Area */}
+        <div
+          ref={containerRef}
+          className="relative w-full max-w-[420px] aspect-story max-h-full flex items-center justify-center rounded-[24px] overflow-hidden shadow-[0_25px_60px_rgba(0,0,0,0.8)] border border-white/10 bg-black touch-none"
+        >
           <canvas
             ref={canvasElementRef}
             className="w-full h-full object-contain"

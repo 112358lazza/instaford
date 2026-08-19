@@ -9,34 +9,54 @@ export class FabricCanvasManager {
   private history: string[] = [];
   private historyIndex = -1;
   private isStateLocked = false;
+  private containerElement: HTMLElement | null = null;
 
-  async init(canvasElement: HTMLCanvasElement, width = 1080, height = 1920): Promise<void> {
+  // Touch gesture tracking for 2-finger Instagram pinch & rotate
+  private initialTouchDistance = 0;
+  private initialTouchAngle = 0;
+  private initialObjectScale = 1;
+  private initialObjectAngle = 0;
+  private isPinching = false;
+
+  async init(
+    canvasElement: HTMLCanvasElement,
+    containerElement: HTMLElement,
+    width = 1080,
+    height = 1920
+  ): Promise<void> {
     if (this.canvas) {
       this.canvas.dispose();
       this.canvas = null;
     }
 
-    // Initialize Fabric Canvas
+    this.containerElement = containerElement;
+
+    // Initialize Fabric Canvas with 1080x1920 logical resolution
     this.canvas = new fabric.Canvas(canvasElement, {
       width,
       height,
-      backgroundColor: '#080b11',
+      backgroundColor: '#000000',
       preserveObjectStacking: true,
-      selection: true
+      selection: true,
+      allowTouchScrolling: false,
+      stopContextMenu: true,
+      fireRightClick: false
     });
 
-    // Configure luxury touch and interaction controls
+    // Global defaults: NO ugly square handles, clean minimal border
     fabric.FabricObject.ownDefaults = {
       ...fabric.FabricObject.ownDefaults,
-      cornerColor: '#0050d8',
-      cornerStrokeColor: '#ffffff',
-      borderColor: '#0050d8',
-      cornerSize: 28,
-      cornerStyle: 'circle',
-      transparentCorners: false,
+      hasControls: false, // NO SQUARE CONTROL BOXES!
+      hasBorders: true,
+      borderColor: '#0062FF',
+      borderDashArray: [6, 6],
       borderScaleFactor: 2.5,
-      padding: 12
+      padding: 6,
+      transparentCorners: true
     };
+
+    // Update coordinate offsets on touch
+    this.updateCanvasDimensions();
 
     this.canvas.on('object:modified', () => {
       this.saveState();
@@ -53,6 +73,28 @@ export class FabricCanvasManager {
         this.saveState();
       }
     });
+
+    // Attach Instagram-style Multi-Touch Pinch & Rotate Listeners
+    this.setupInstagramTouchGestures();
+  }
+
+  /**
+   * Recalculates canvas bounding rect and touch offsets so touches map 1:1 anywhere across the screen
+   */
+  updateCanvasDimensions(): void {
+    if (!this.canvas || !this.containerElement) return;
+
+    const rect = this.containerElement.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      this.canvas.setDimensions(
+        {
+          width: '100%',
+          height: '100%'
+        },
+        { cssOnly: true }
+      );
+      this.canvas.calcOffset();
+    }
   }
 
   getCanvas(): fabric.Canvas | null {
@@ -60,7 +102,7 @@ export class FabricCanvasManager {
   }
 
   /**
-   * Sets Layer 1: Full-Frame Real Captured Photo (fitted/centered in 9:16)
+   * Sets Layer 1: Full-Frame Real Captured Photo (fills 1080x1920 9:16 frame)
    */
   async setPhoto(photoDataUrl: string): Promise<void> {
     if (!this.canvas) return;
@@ -94,6 +136,7 @@ export class FabricCanvasManager {
         selectable: false,
         evented: false,
         hasControls: false,
+        hasBorders: false,
         lockMovementX: true,
         lockMovementY: true
       });
@@ -107,7 +150,7 @@ export class FabricCanvasManager {
   }
 
   /**
-   * Sets Layer 3: Official Ford Racing Frame Overlay
+   * Sets Layer 3: Official Ford Racing Frame Overlay (Locked on top)
    */
   async loadOfficialFrame(): Promise<void> {
     if (!this.canvas) return;
@@ -133,8 +176,9 @@ export class FabricCanvasManager {
         scaleX: canvasWidth / (img.width || canvasWidth),
         scaleY: canvasHeight / (img.height || canvasHeight),
         selectable: false,
-        evented: false,
+        evented: false, // DOES NOT BLOCK TOUCH EVENTS!
         hasControls: false,
+        hasBorders: false,
         lockMovementX: true,
         lockMovementY: true
       });
@@ -149,9 +193,9 @@ export class FabricCanvasManager {
   }
 
   /**
-   * Adds an interactive helmet sticker
+   * Adds an interactive helmet sticker with Instagram Stories gesture controls (NO SQUARE BOXES!)
    */
-  async addHelmetSticker(imageSrc: string, initialScale = 0.35): Promise<void> {
+  async addHelmetSticker(imageSrc: string, initialScale = 0.4): Promise<void> {
     if (!this.canvas) return;
 
     try {
@@ -162,35 +206,122 @@ export class FabricCanvasManager {
       const canvasWidth = this.canvas.getWidth();
       const canvasHeight = this.canvas.getHeight();
 
-      // Position around upper-center area (where head usually is in portrait photo)
+      // Position in upper-center area with unrestricted freedom of movement
       img.set({
         originX: 'center',
         originY: 'center',
         left: canvasWidth / 2,
-        top: canvasHeight * 0.4,
+        top: canvasHeight * 0.38,
         scaleX: initialScale,
         scaleY: initialScale,
         selectable: true,
-        hasControls: true,
-        cornerColor: '#0050d8',
-        cornerStrokeColor: '#ffffff',
-        borderColor: '#0050d8',
-        cornerSize: 28,
-        padding: 10
+        evented: true,
+        hasControls: false, // NO SQUARE HANDLES!
+        hasBorders: true, // Subtle minimal outline
+        borderColor: '#0062FF',
+        borderDashArray: [6, 6],
+        borderScaleFactor: 2.5,
+        padding: 8,
+        lockUniScaling: true
       });
 
       this.canvas.add(img);
 
-      // Keep official frame on top of all stickers
+      // Keep official frame on top
       if (this.frameObject) {
         this.canvas.bringObjectToFront(this.frameObject);
       }
 
       this.canvas.setActiveObject(img);
+      this.canvas.calcOffset();
       this.canvas.requestRenderAll();
     } catch (err) {
       console.warn('Error adding helmet sticker to Fabric:', err);
     }
+  }
+
+  /**
+   * Multi-Touch Gesture Handling (Instagram Stories Style Pinch-to-Zoom & Rotate)
+   */
+  private setupInstagramTouchGestures(): void {
+    if (!this.containerElement) return;
+
+    const el = this.containerElement;
+
+    const getTouchDistance = (t1: Touch, t2: Touch): number => {
+      return Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+    };
+
+    const getTouchAngle = (t1: Touch, t2: Touch): number => {
+      return Math.atan2(t2.clientY - t1.clientY, t2.clientX - t1.clientX);
+    };
+
+    el.addEventListener(
+      'touchstart',
+      (e: TouchEvent) => {
+        if (!this.canvas) return;
+        this.canvas.calcOffset();
+
+        if (e.touches.length === 2) {
+          const active = this.canvas.getActiveObject();
+          if (active && active !== this.photoObject && active !== this.frameObject) {
+            this.isPinching = true;
+            this.initialTouchDistance = getTouchDistance(e.touches[0], e.touches[1]);
+            this.initialTouchAngle = getTouchAngle(e.touches[0], e.touches[1]);
+            this.initialObjectScale = active.scaleX || 1;
+            this.initialObjectAngle = active.angle || 0;
+            e.preventDefault();
+          }
+        }
+      },
+      { passive: false }
+    );
+
+    el.addEventListener(
+      'touchmove',
+      (e: TouchEvent) => {
+        if (!this.canvas) return;
+
+        if (e.touches.length === 2 && this.isPinching) {
+          const active = this.canvas.getActiveObject();
+          if (active && active !== this.photoObject && active !== this.frameObject) {
+            e.preventDefault();
+
+            const currentDistance = getTouchDistance(e.touches[0], e.touches[1]);
+            const currentAngle = getTouchAngle(e.touches[0], e.touches[1]);
+
+            if (this.initialTouchDistance > 0) {
+              // 1. Pinch to Scale
+              const scaleRatio = currentDistance / this.initialTouchDistance;
+              const newScale = Math.max(0.15, Math.min(2.5, this.initialObjectScale * scaleRatio));
+              active.set({
+                scaleX: newScale,
+                scaleY: newScale
+              });
+
+              // 2. 2-Finger Rotation
+              const angleDiff = (currentAngle - this.initialTouchAngle) * (180 / Math.PI);
+              active.set({
+                angle: (this.initialObjectAngle + angleDiff) % 360
+              });
+
+              this.canvas.requestRenderAll();
+            }
+          }
+        }
+      },
+      { passive: false }
+    );
+
+    const endPinch = () => {
+      if (this.isPinching) {
+        this.isPinching = false;
+        this.saveState();
+      }
+    };
+
+    el.addEventListener('touchend', endPinch);
+    el.addEventListener('touchcancel', endPinch);
   }
 
   /**
@@ -211,12 +342,15 @@ export class FabricCanvasManager {
       fontWeight: 'bold',
       fontSize: 44,
       fill: '#ffffff',
-      stroke: '#080b11',
+      stroke: '#000000',
       strokeWidth: 2,
       textAlign: 'center',
-      cornerColor: '#0050d8',
-      borderColor: '#0050d8',
-      padding: 10
+      hasControls: false, // NO SQUARE HANDLES!
+      hasBorders: true,
+      borderColor: '#0062FF',
+      borderDashArray: [6, 6],
+      borderScaleFactor: 2.5,
+      padding: 8
     });
 
     this.canvas.add(iText);
@@ -228,7 +362,7 @@ export class FabricCanvasManager {
   }
 
   /**
-   * Deletes the currently selected object
+   * Deletes currently selected object
    */
   deleteActiveObject(): void {
     if (!this.canvas) return;
@@ -246,14 +380,14 @@ export class FabricCanvasManager {
   flipActiveObject(): void {
     if (!this.canvas) return;
     const active = this.canvas.getActiveObject();
-    if (active) {
+    if (active && active !== this.photoObject && active !== this.frameObject) {
       active.set('flipX', !active.flipX);
       this.canvas.requestRenderAll();
     }
   }
 
   /**
-   * Layering: Forward / Backward
+   * Layering
    */
   bringActiveForward(): void {
     if (!this.canvas) return;
@@ -346,7 +480,7 @@ export class FabricCanvasManager {
   exportComposite(format: 'jpeg' | 'png' = 'jpeg', quality = 0.96): string {
     if (!this.canvas) return '';
 
-    // Deselect active object
+    // Deselect active object before rendering
     this.canvas.discardActiveObject();
     this.canvas.requestRenderAll();
 
@@ -368,6 +502,7 @@ export class FabricCanvasManager {
     }
     this.photoObject = null;
     this.frameObject = null;
+    this.containerElement = null;
     this.history = [];
     this.historyIndex = -1;
   }
