@@ -2,17 +2,21 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { CameraFacingMode, CapturedPhoto } from '../types';
 import { cameraService } from '../services/camera';
 import { soundService } from '../services/soundEffects';
-import { OFFICIAL_FRAME } from '../data/frames';
 import { HeaderBar } from './HeaderBar';
-import { StandModal } from './StandModal';
-import { Image as ImageIcon, AlertCircle, RefreshCcw } from 'lucide-react';
+import { RefreshCcw, AlertCircle, Image as ImageIcon } from 'lucide-react';
 
 interface CameraViewProps {
   onPhotoCaptured: (photo: CapturedPhoto) => void;
+  onOpenStickers: () => void;
+  onOpenGallery: () => void;
+  lastPhoto?: CapturedPhoto | null;
 }
 
 export const CameraView: React.FC<CameraViewProps> = ({
-  onPhotoCaptured
+  onPhotoCaptured,
+  onOpenStickers,
+  onOpenGallery,
+  lastPhoto
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -23,7 +27,6 @@ export const CameraView: React.FC<CameraViewProps> = ({
   const [countdown, setCountdown] = useState<number | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [isTorchOn, setIsTorchOn] = useState(false);
-  const [isStandModalOpen, setIsStandModalOpen] = useState(false);
   const [showFlash, setShowFlash] = useState(false);
 
   // Initialize and start camera stream
@@ -155,12 +158,11 @@ export const CameraView: React.FC<CameraViewProps> = ({
         onToggleTorch={handleToggleTorch}
         facingMode={facingMode}
         onToggleFacingMode={handleToggleFacingMode}
-        onOpenStandModal={() => setIsStandModalOpen(true)}
+        onOpenStickers={onOpenStickers}
       />
 
-      {/* Main Viewport: Live Camera + Ford Racing Frame Overlay */}
+      {/* Main Viewport: Live Camera Feed */}
       <div className="relative flex-1 w-full h-full flex items-center justify-center p-2 sm:p-3 overflow-hidden">
-        {/* 9:16 Viewport Container with Apple Glass Border */}
         <div className="relative w-full max-w-[420px] aspect-story max-h-full rounded-[26px] overflow-hidden shadow-[0_25px_60px_rgba(0,0,0,0.8)] bg-black border border-white/10 flex items-center justify-center">
           {/* Live Video Feed */}
           <video
@@ -171,12 +173,14 @@ export const CameraView: React.FC<CameraViewProps> = ({
             className={`w-full h-full object-cover ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
           />
 
-          {/* Official Ford Racing Frame Overlay (Live!) */}
-          <img
-            src={OFFICIAL_FRAME.imageSrc}
-            alt="Ford Racing Frame"
-            className="absolute inset-0 w-full h-full object-cover pointer-events-none z-20"
-          />
+          {/* Bottom FORD RACING Banner Overlay as in Page 3 mockup */}
+          <div className="absolute bottom-4 left-0 right-0 z-20 flex justify-center pointer-events-none">
+            <div className="px-5 py-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/15 shadow-lg">
+              <span className="font-sans font-black text-xs sm:text-sm tracking-[0.25em] text-white uppercase">
+                FORD RACING
+              </span>
+            </div>
+          </div>
 
           {/* Shutter White Flash Animation */}
           {showFlash && (
@@ -195,14 +199,14 @@ export const CameraView: React.FC<CameraViewProps> = ({
           {/* Camera Permission Error Overlay */}
           {cameraError && (
             <div className="absolute inset-4 z-30 flex flex-col items-center justify-center p-6 rounded-[22px] apple-glass-heavy text-center">
-              <AlertCircle className="w-9 h-9 text-[#0062FF] mb-3" />
+              <AlertCircle className="w-9 h-9 text-[#0032ff] mb-3" />
               <h3 className="text-base font-semibold text-white mb-1.5 tracking-[-0.01em]">Accesso Fotocamera</h3>
               <p className="text-xs text-white/60 mb-5 max-w-xs leading-relaxed">{cameraError}</p>
 
               <div className="flex flex-col gap-2.5 w-full max-w-xs">
                 <button
                   onClick={() => initCamera(facingMode)}
-                  className="flex items-center justify-center gap-2 py-3 px-4 rounded-[14px] bg-[#0062FF] text-white font-medium text-xs tracking-[-0.01em] shadow-md apple-button"
+                  className="flex items-center justify-center gap-2 py-3 px-4 rounded-[14px] bg-[#0032ff] text-white font-medium text-xs tracking-[-0.01em] shadow-md apple-button"
                 >
                   <RefreshCcw className="w-3.5 h-3.5" />
                   Riprova Accesso
@@ -224,45 +228,46 @@ export const CameraView: React.FC<CameraViewProps> = ({
         </div>
       </div>
 
-      {/* Bottom Controls Area with Apple Camera Style Shutter */}
-      <div className="relative z-20 pb-7 pt-2 flex items-center justify-around max-w-xs mx-auto w-full px-6">
-        {/* Upload File Button */}
-        <label className="p-3.5 rounded-full apple-glass apple-button text-white/90 hover:text-white cursor-pointer shadow-md">
-          <ImageIcon className="w-5 h-5" />
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleFileUpload}
-            className="hidden"
-          />
-        </label>
+      {/* Bottom Controls Area matching Page 3 */}
+      <div className="relative z-20 pb-7 pt-2 flex items-center justify-between max-w-xs mx-auto w-full px-6">
+        {/* Left: Session Gallery Square Thumbnail */}
+        <button
+          onClick={onOpenGallery}
+          className="w-12 h-12 rounded-[14px] apple-glass flex items-center justify-center overflow-hidden border border-white/30 shadow-md apple-button"
+          title="Galleria foto scattate"
+        >
+          {lastPhoto ? (
+            <img
+              src={lastPhoto.dataUrl}
+              alt="Ultima foto"
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <ImageIcon className="w-5 h-5 text-white/70" />
+          )}
+        </button>
 
-        {/* Apple iOS Camera Shutter Button */}
+        {/* Central Apple iOS Camera Shutter Button */}
         <button
           onClick={handleTriggerCapture}
           disabled={isCapturing}
           className="group relative flex items-center justify-center w-[74px] h-[74px] rounded-full apple-shutter-ring focus:outline-none"
         >
           {/* Outer Ring */}
-          <div className="absolute inset-0 rounded-full border-[3px] border-white shadow-[0_0_20px_rgba(255,255,255,0.2)]" />
+          <div className="absolute inset-0 rounded-full border-[3px] border-white shadow-[0_0_20px_rgba(255,255,255,0.3)]" />
           {/* Inner Circle */}
           <div className="w-[60px] h-[60px] rounded-full bg-white group-active:scale-90 transition-transform duration-100 ease-out shadow-inner" />
         </button>
 
-        {/* Quick Flip Camera Button */}
+        {/* Right: Quick Flip Camera Button */}
         <button
           onClick={handleToggleFacingMode}
-          className="p-3.5 rounded-full apple-glass apple-button text-white/90 hover:text-white shadow-md"
+          className="w-12 h-12 rounded-[14px] apple-glass flex items-center justify-center apple-button text-white/90 hover:text-white shadow-md"
+          title="Ruota fotocamera"
         >
           <RefreshCcw className="w-5 h-5" />
         </button>
       </div>
-
-      {/* Stand QR Modal */}
-      <StandModal
-        isOpen={isStandModalOpen}
-        onClose={() => setIsStandModalOpen(false)}
-      />
     </div>
   );
 };

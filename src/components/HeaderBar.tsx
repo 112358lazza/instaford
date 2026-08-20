@@ -1,5 +1,5 @@
 import React from 'react';
-import { QrCode, Timer, Zap, ZapOff, RefreshCw } from 'lucide-react';
+import { Timer, Zap, ZapOff, RefreshCw } from 'lucide-react';
 import { CameraFacingMode } from '../types';
 
 interface HeaderBarProps {
@@ -9,7 +9,7 @@ interface HeaderBarProps {
   onToggleTorch: () => void;
   facingMode: CameraFacingMode;
   onToggleFacingMode: () => void;
-  onOpenStandModal: () => void;
+  onOpenStickers: () => void;
 }
 
 export const HeaderBar: React.FC<HeaderBarProps> = ({
@@ -19,26 +19,44 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   onToggleTorch,
   facingMode,
   onToggleFacingMode,
-  onOpenStandModal
+  onOpenStickers
 }) => {
   return (
     <header className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-4 pt-4 pb-3 pointer-events-auto">
-      {/* Left: Ford Racing Apple Glass Pill */}
+      {/* Left: InstaFord Brand Logo */}
       <div className="flex items-center gap-2 px-3 py-1.5 rounded-full apple-glass shadow-lg">
-        <div className="w-2 h-2 rounded-full bg-[#0062FF] shadow-[0_0_6px_#0062FF]" />
-        <span className="font-semibold text-xs text-white tracking-[-0.01em]">
-          Ford Racing
+        <div className="w-2 h-2 rounded-full bg-[#0032ff] shadow-[0_0_6px_#0032ff]" />
+        <span className="font-bold text-xs text-white tracking-[-0.01em]">
+          InstaFord
         </span>
       </div>
 
       {/* Right: Floating Controls Capsule */}
       <div className="flex items-center gap-1.5 p-1 rounded-full apple-glass shadow-lg">
+        {/* Stickers Quick Button */}
+        <button
+          onClick={onOpenStickers}
+          className="flex items-center gap-1 px-2.5 py-1 rounded-full apple-button text-white/90 hover:text-white"
+          title="Stickers"
+        >
+          <img
+            src="/assets/branding/casco_simbolo.png"
+            alt="Stickers"
+            className="w-4 h-4 object-contain"
+          />
+          <span className="text-[10px] font-bold uppercase tracking-wider hidden xs:inline">
+            Stickers
+          </span>
+        </button>
+
+        <div className="w-px h-3.5 bg-white/15 mx-0.5" />
+
         {/* Timer Button */}
         <button
           onClick={onToggleTimer}
           className={`relative p-2 rounded-full apple-button ${
             timerSeconds > 0
-              ? 'bg-[#0062FF] text-white shadow-sm'
+              ? 'bg-[#0032ff] text-white shadow-sm'
               : 'text-white/80 hover:text-white'
           }`}
           title="Autoscatto"
@@ -71,15 +89,6 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
           title={`Passa a fotocamera ${facingMode === 'user' ? 'posteriore' : 'frontale'}`}
         >
           <RefreshCw className="w-4 h-4" />
-        </button>
-
-        {/* Stand QR Modal Button */}
-        <button
-          onClick={onOpenStandModal}
-          className="p-2 rounded-full apple-button text-white/80 hover:text-white"
-          title="Info Stand"
-        >
-          <QrCode className="w-4 h-4" />
         </button>
       </div>
     </header>

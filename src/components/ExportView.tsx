@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
 import { sharingService, ShareResult } from '../services/sharing';
-import { StandModal } from './StandModal';
 import {
   Download,
   Copy,
   RotateCcw,
-  QrCode,
-  CheckCircle2
+  CheckCircle2,
+  Share2
 } from 'lucide-react';
 
 interface ExportViewProps {
   compositeDataUrl: string;
   onRetake: () => void;
+  onOpenGallery?: () => void;
 }
 
 const InstagramIcon: React.FC<{ className?: string }> = ({ className = "w-5 h-5" }) => (
@@ -28,7 +28,6 @@ export const ExportView: React.FC<ExportViewProps> = ({
 }) => {
   const [isSharing, setIsSharing] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [isStandModalOpen, setIsStandModalOpen] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -41,8 +40,8 @@ export const ExportView: React.FC<ExportViewProps> = ({
     try {
       const result: ShareResult = await sharingService.sharePhoto(
         compositeDataUrl,
-        'Ford Racing Photo Booth',
-        'La mia foto ufficiale allo Stand Ford Racing! 🏎️💨 #FordRacing #FordPerformance #StandExperience'
+        'InstaFord Photo Booth',
+        'Il mio selfie ufficiale con Ford Racing! 🏎️💨 #InstaFord #FordRacing #FordPerformance'
       );
       showToast(result.message);
     } catch {
@@ -56,7 +55,7 @@ export const ExportView: React.FC<ExportViewProps> = ({
   const handleDownload = () => {
     sharingService.downloadPhoto(
       compositeDataUrl,
-      `Ford_Racing_Photo_${Date.now()}.jpg`
+      `InstaFord_${Date.now()}.jpg`
     );
     showToast('Foto salvata nella galleria!');
   };
@@ -76,18 +75,18 @@ export const ExportView: React.FC<ExportViewProps> = ({
       {/* Top Bar with Apple Glass */}
       <header className="sticky top-0 z-30 flex items-center justify-between px-5 py-3.5 bg-black/50 backdrop-blur-xl border-b border-white/[0.08]">
         <div className="flex items-center gap-2 px-3 py-1 rounded-full apple-glass">
-          <div className="w-2 h-2 rounded-full bg-[#0062FF]" />
-          <span className="font-semibold text-xs text-white tracking-[-0.01em]">
-            Foto Ufficiale
+          <div className="w-2 h-2 rounded-full bg-[#0032ff]" />
+          <span className="font-bold text-xs text-white tracking-[-0.01em]">
+            InstaFord
           </span>
         </div>
 
         <button
-          onClick={() => setIsStandModalOpen(true)}
-          className="p-2.5 rounded-full apple-glass apple-button text-white/90 hover:text-white"
-          title="Info Stand & QR Code"
+          onClick={onRetake}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full apple-glass apple-button text-white/90 hover:text-white text-xs font-medium"
         >
-          <QrCode className="w-4 h-4" />
+          <RotateCcw className="w-3.5 h-3.5" />
+          <span>Nuovo Scatto</span>
         </button>
       </header>
 
@@ -97,7 +96,7 @@ export const ExportView: React.FC<ExportViewProps> = ({
         <div className="relative w-full max-w-[320px] aspect-story rounded-[24px] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.8)] border border-white/15 bg-black group">
           <img
             src={compositeDataUrl}
-            alt="Ford Racing Photo"
+            alt="InstaFord Photo"
             className="w-full h-full object-cover"
           />
 
@@ -144,14 +143,14 @@ export const ExportView: React.FC<ExportViewProps> = ({
               className="py-3 px-4 rounded-[16px] apple-glass text-white/90 font-medium text-xs flex items-center justify-center gap-1.5 apple-button"
             >
               <RotateCcw className="w-3.5 h-3.5 text-white/60" />
-              <span>Nuovo Scatto</span>
+              <span>Rifai</span>
             </button>
           </div>
         </div>
 
         {/* Brand Footer */}
         <div className="mt-2 text-center text-[10px] text-white/30 font-medium tracking-wide">
-          FORD RACING • STAND EXPERIENCE 2026
+          INSTAFORD • OFFICIAL FORD SELFIE EXPERIENCE
         </div>
       </div>
 
@@ -162,12 +161,6 @@ export const ExportView: React.FC<ExportViewProps> = ({
           <span>{toastMessage}</span>
         </div>
       )}
-
-      {/* Stand QR Modal */}
-      <StandModal
-        isOpen={isStandModalOpen}
-        onClose={() => setIsStandModalOpen(false)}
-      />
     </div>
   );
 };
