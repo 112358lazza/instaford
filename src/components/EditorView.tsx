@@ -1,7 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { CapturedPhoto, StickerItem, FilterPreset } from '../types';
-import { STICKERS } from '../data/stickers';
-import { FILTERS } from '../data/filters';
+import { CapturedPhoto, StickerItem } from '../types';
 import { fabricCanvasManager } from '../services/fabricCanvas';
 import { StickersModal } from './StickersModal';
 import {
@@ -12,11 +10,9 @@ import {
   Trash2,
   FlipHorizontal,
   Type,
-  Sparkles,
-  Sliders,
   BringToFront,
   SendToBack,
-  Plus
+  Sparkles
 } from 'lucide-react';
 
 interface EditorViewProps {
@@ -24,8 +20,6 @@ interface EditorViewProps {
   onBackToCamera: () => void;
   onProceedToExport: (compositeDataUrl: string) => void;
 }
-
-type EditorTab = 'stickers' | 'filters';
 
 export const EditorView: React.FC<EditorViewProps> = ({
   photo,
@@ -35,8 +29,6 @@ export const EditorView: React.FC<EditorViewProps> = ({
   const canvasElementRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const [activeTab, setActiveTab] = useState<EditorTab>('stickers');
-  const [selectedFilterId, setSelectedFilterId] = useState<string>('natural');
   const [hasSelection, setHasSelection] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const [isStickersModalOpen, setIsStickersModalOpen] = useState(false);
@@ -56,14 +48,8 @@ export const EditorView: React.FC<EditorViewProps> = ({
     // Layer 1: User's real captured photo
     await fabricCanvasManager.setPhoto(photo.dataUrl);
 
-    // Layer 3: Official Ford Racing Frame (locked on top, touch passes through)
+    // Layer 3: Official Ford Racing Frame Overlay (touch passes through to stickers)
     await fabricCanvasManager.loadOfficialFrame();
-
-    // Auto-add first sticker
-    const defaultSticker = STICKERS[1] || STICKERS[0];
-    if (defaultSticker) {
-      await fabricCanvasManager.addHelmetSticker(defaultSticker.imageSrc, defaultSticker.defaultScale);
-    }
 
     // Selection listener
     const canvas = fabricCanvasManager.getCanvas();
@@ -93,15 +79,9 @@ export const EditorView: React.FC<EditorViewProps> = ({
     };
   }, [initEditor]);
 
-  // Add Sticker from Modal or Carousel
+  // Add Sticker from Modal
   const handleAddSticker = async (sticker: StickerItem) => {
     await fabricCanvasManager.addHelmetSticker(sticker.imageSrc, sticker.defaultScale || 0.38);
-  };
-
-  // Apply Filter
-  const handleApplyFilter = (filter: FilterPreset) => {
-    setSelectedFilterId(filter.id);
-    fabricCanvasManager.applyFilter(filter);
   };
 
   // Add Text
@@ -117,9 +97,9 @@ export const EditorView: React.FC<EditorViewProps> = ({
 
   return (
     <div className="relative w-full h-full flex flex-col bg-black overflow-hidden select-none">
-      {/* Top Action Bar with Apple Glass */}
-      <div className="relative z-30 flex items-center justify-between px-4 py-3 bg-black/40 backdrop-blur-xl border-b border-white/[0.08]">
-        {/* Back Button */}
+      {/* Top Instagram-style Action Bar */}
+      <header className="relative z-30 flex items-center justify-between px-4 py-3 bg-black/40 backdrop-blur-xl border-b border-white/[0.08]">
+        {/* Back / Retake Button */}
         <button
           onClick={onBackToCamera}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-full apple-glass apple-button text-white/90 hover:text-white text-xs font-medium tracking-[-0.01em]"
@@ -128,8 +108,8 @@ export const EditorView: React.FC<EditorViewProps> = ({
           <span>Scatta</span>
         </button>
 
-        {/* Action Controls: Undo, Redo, Add Text */}
-        <div className="flex items-center gap-1 p-0.5 rounded-full apple-glass">
+        {/* Action Controls: Undo, Redo, Add Text, Stickers Quick Trigger */}
+        <div className="flex items-center gap-1.5 p-1 rounded-full apple-glass">
           <button
             onClick={() => fabricCanvasManager.undo()}
             className="p-1.5 rounded-full apple-button text-white/80 hover:text-white"
@@ -144,40 +124,56 @@ export const EditorView: React.FC<EditorViewProps> = ({
           >
             <RotateCw className="w-3.5 h-3.5" />
           </button>
-          <div className="w-px h-3.5 bg-white/10 mx-0.5" />
+          <div className="w-px h-3.5 bg-white/15 mx-0.5" />
           <button
             onClick={handleAddText}
             className="flex items-center gap-1 px-2.5 py-1 rounded-full apple-button text-white/90 hover:text-white text-xs font-medium"
             title="Aggiungi Testo"
           >
             <Type className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Testo</span>
+            <span className="hidden xs:inline">Testo</span>
           </button>
         </div>
 
-        {/* Done / Proceed Button */}
+        {/* Proceed / Next Button */}
         <button
           onClick={handleComplete}
-          className="flex items-center gap-1 px-3.5 py-1.5 rounded-full bg-[#0032ff] hover:bg-[#1a4fff] text-white text-xs font-semibold tracking-[-0.01em] shadow-[0_2px_12px_rgba(0,50,255,0.4)] apple-button"
+          className="flex items-center gap-1 px-4 py-1.5 rounded-full bg-[#0032ff] hover:bg-[#1a4fff] text-white text-xs font-semibold tracking-[-0.01em] shadow-[0_2px_12px_rgba(0,50,255,0.4)] apple-button"
         >
           <span>Avanti</span>
           <Check className="w-3.5 h-3.5" />
         </button>
-      </div>
+      </header>
 
-      {/* Main Canvas Studio Area */}
+      {/* Main Fullscreen Studio Area */}
       <div className="relative flex-1 w-full h-full flex items-center justify-center p-2 sm:p-3 overflow-hidden">
         {/* 9:16 Interactive Canvas Container with Full Touch Area */}
         <div
           ref={containerRef}
-          className="relative w-full max-w-[420px] aspect-story max-h-full flex items-center justify-center rounded-[24px] overflow-hidden shadow-[0_25px_60px_rgba(0,0,0,0.8)] border border-white/10 bg-black touch-none"
+          className="relative w-full max-w-[420px] aspect-story max-h-full flex items-center justify-center rounded-[28px] overflow-hidden shadow-[0_25px_60px_rgba(0,0,0,0.8)] border border-white/10 bg-black touch-none"
         >
           <canvas
             ref={canvasElementRef}
             className="w-full h-full object-contain"
           />
 
-          {/* Floating Sticker Action Capsule (when a sticker is selected) */}
+          {/* Floating Instagram-style Stickers Trigger (Helmet Icon) on the photo */}
+          <button
+            onClick={() => setIsStickersModalOpen(true)}
+            className="absolute top-4 right-4 z-40 p-3 rounded-full apple-glass-heavy shadow-2xl border border-white/20 apple-button group flex items-center gap-2"
+            title="Aggiungi Stickers"
+          >
+            <img
+              src="/assets/branding/casco_simbolo.png"
+              alt="Aggiungi Stickers"
+              className="w-6 h-6 object-contain group-hover:scale-110 transition-transform"
+            />
+            <span className="text-[11px] font-bold text-white uppercase tracking-wider hidden sm:inline">
+              Stickers
+            </span>
+          </button>
+
+          {/* Floating Sticker Action Capsule (when an active sticker is selected) */}
           {hasSelection && (
             <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1 p-1 rounded-full apple-glass-heavy shadow-2xl animate-apple-fade-in">
               <button
@@ -225,97 +221,24 @@ export const EditorView: React.FC<EditorViewProps> = ({
         </div>
       </div>
 
-      {/* Bottom Sheet Drawer with Apple Segmented Control */}
-      <div className="relative z-30 apple-glass-heavy border-t border-white/[0.08] flex flex-col pb-5 pt-3 px-4">
-        {/* Apple Segmented Control Header */}
-        <div className="flex items-center justify-between mb-3 max-w-sm mx-auto w-full">
-          <div className="flex items-center p-0.5 rounded-full bg-black/40 border border-white/[0.08] flex-1 mr-2">
-            <button
-              onClick={() => setActiveTab('stickers')}
-              className={`flex-1 py-1.5 px-3 rounded-full text-xs font-medium tracking-[-0.01em] transition-all duration-150 ${
-                activeTab === 'stickers'
-                  ? 'bg-white text-black shadow-sm'
-                  : 'text-white/60 hover:text-white'
-              }`}
-            >
-              Stickers Ford & F1
-            </button>
-            <button
-              onClick={() => setActiveTab('filters')}
-              className={`flex-1 py-1.5 px-3 rounded-full text-xs font-medium tracking-[-0.01em] transition-all duration-150 ${
-                activeTab === 'filters'
-                  ? 'bg-white text-black shadow-sm'
-                  : 'text-white/60 hover:text-white'
-              }`}
-            >
-              Filtri Studio
-            </button>
-          </div>
+      {/* Bottom Floating Bar with Big Stickers Button */}
+      <footer className="relative z-30 pb-6 pt-2 px-6 flex items-center justify-center">
+        <button
+          onClick={() => setIsStickersModalOpen(true)}
+          className="flex items-center gap-2.5 px-6 py-3.5 rounded-full apple-glass apple-button text-white shadow-[0_8px_25px_rgba(0,0,0,0.3)] border border-white/20"
+        >
+          <img
+            src="/assets/branding/casco_simbolo.png"
+            alt="Stickers"
+            className="w-5 h-5 object-contain"
+          />
+          <span className="font-bold text-xs uppercase tracking-wider">
+            Scegli Sticker
+          </span>
+        </button>
+      </footer>
 
-          {/* Quick Open All Stickers Modal Button */}
-          <button
-            onClick={() => setIsStickersModalOpen(true)}
-            className="p-1.5 rounded-full apple-glass apple-button text-white shadow-sm flex items-center gap-1 px-2.5"
-            title="Tutti gli Sticker"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span className="text-[10px] font-bold">TUTTI</span>
-          </button>
-        </div>
-
-        {/* Tab 1: Sticker Carousel */}
-        {activeTab === 'stickers' && (
-          <div className="flex items-center gap-3 overflow-x-auto no-scrollbar py-1">
-            {STICKERS.map((sticker) => (
-              <button
-                key={sticker.id}
-                onClick={() => handleAddSticker(sticker)}
-                className="flex-shrink-0 flex flex-col items-center p-2 rounded-[16px] apple-glass-card hover:bg-white/[0.08] apple-button group w-24"
-              >
-                <div className="relative w-16 h-12 flex items-center justify-center mb-1">
-                  <img
-                    src={sticker.imageSrc}
-                    alt={sticker.name}
-                    className="max-h-full max-w-full object-contain drop-shadow-md group-hover:scale-105 transition-transform duration-200"
-                  />
-                  <div className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-[#0032ff] text-white flex items-center justify-center shadow-md">
-                    <Plus className="w-2 h-2" />
-                  </div>
-                </div>
-                <div className="text-[10px] font-semibold text-white tracking-[-0.01em] truncate w-full text-center">
-                  {sticker.name}
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Tab 2: Pro Photography Filters */}
-        {activeTab === 'filters' && (
-          <div className="flex items-center gap-2.5 overflow-x-auto no-scrollbar py-1">
-            {FILTERS.map((filter) => {
-              const isSelected = filter.id === selectedFilterId;
-              return (
-                <button
-                  key={filter.id}
-                  onClick={() => handleApplyFilter(filter)}
-                  className={`flex-shrink-0 flex flex-col items-center justify-center p-2 rounded-[16px] text-center apple-button w-24 h-16 ${
-                    isSelected
-                      ? 'bg-[#0032ff] text-white shadow-md'
-                      : 'apple-glass-card text-white/70 hover:text-white'
-                  }`}
-                >
-                  <Sliders className={`w-3.5 h-3.5 mb-1 ${isSelected ? 'text-white' : 'text-white/60'}`} />
-                  <span className="text-[10px] font-medium tracking-[-0.01em] truncate w-full">{filter.name}</span>
-                  <span className={`text-[8px] truncate w-full ${isSelected ? 'text-white/80' : 'text-white/40'}`}>{filter.subtitle}</span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Stickers Modal */}
+      {/* Instagram-style Stickers Modal */}
       <StickersModal
         isOpen={isStickersModalOpen}
         onClose={() => setIsStickersModalOpen(false)}

@@ -2,19 +2,16 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { CameraFacingMode, CapturedPhoto } from '../types';
 import { cameraService } from '../services/camera';
 import { soundService } from '../services/soundEffects';
-import { HeaderBar } from './HeaderBar';
 import { RefreshCcw, AlertCircle, Image as ImageIcon } from 'lucide-react';
 
 interface CameraViewProps {
   onPhotoCaptured: (photo: CapturedPhoto) => void;
-  onOpenStickers: () => void;
   onOpenGallery: () => void;
   lastPhoto?: CapturedPhoto | null;
 }
 
 export const CameraView: React.FC<CameraViewProps> = ({
   onPhotoCaptured,
-  onOpenStickers,
   onOpenGallery,
   lastPhoto
 }) => {
@@ -23,10 +20,7 @@ export const CameraView: React.FC<CameraViewProps> = ({
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [facingMode, setFacingMode] = useState<CameraFacingMode>('user');
-  const [timerSeconds, setTimerSeconds] = useState<number>(0);
-  const [countdown, setCountdown] = useState<number | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
-  const [isTorchOn, setIsTorchOn] = useState(false);
   const [showFlash, setShowFlash] = useState(false);
 
   // Initialize and start camera stream
@@ -53,17 +47,6 @@ export const CameraView: React.FC<CameraViewProps> = ({
     };
   }, [initCamera, facingMode]);
 
-  // Toggle Timer (Off -> 3s -> Off)
-  const handleToggleTimer = () => {
-    setTimerSeconds((prev) => (prev === 0 ? 3 : 0));
-  };
-
-  // Toggle Torch
-  const handleToggleTorch = async () => {
-    const newState = await cameraService.toggleTorch();
-    setIsTorchOn(newState);
-  };
-
   // Switch Camera
   const handleToggleFacingMode = async () => {
     const nextMode: CameraFacingMode = facingMode === 'user' ? 'environment' : 'user';
@@ -73,7 +56,7 @@ export const CameraView: React.FC<CameraViewProps> = ({
 
   // Capture Photo
   const executeCapture = () => {
-    if (!videoRef.current) return;
+    if (!videoRef.current || isCapturing) return;
     setIsCapturing(true);
     soundService.playShutter();
     setShowFlash(true);
@@ -88,7 +71,6 @@ export const CameraView: React.FC<CameraViewProps> = ({
     const rawCapture = cameraService.captureFrame(video, isUserFacing);
 
     setIsCapturing(false);
-    setCountdown(null);
 
     onPhotoCaptured({
       dataUrl: rawCapture.dataUrl,
@@ -97,32 +79,6 @@ export const CameraView: React.FC<CameraViewProps> = ({
       facingMode,
       timestamp: Date.now()
     });
-  };
-
-  // Shutter trigger with countdown
-  const handleTriggerCapture = () => {
-    if (isCapturing) return;
-
-    if (timerSeconds > 0) {
-      setCountdown(timerSeconds);
-      soundService.playBeep(false);
-
-      let current = timerSeconds;
-      const interval = setInterval(() => {
-        current -= 1;
-        if (current > 0) {
-          setCountdown(current);
-          soundService.playBeep(false);
-        } else {
-          clearInterval(interval);
-          setCountdown(null);
-          soundService.playBeep(true);
-          executeCapture();
-        }
-      }, 1000);
-    } else {
-      executeCapture();
-    }
   };
 
   // Fallback gallery image upload
@@ -150,20 +106,9 @@ export const CameraView: React.FC<CameraViewProps> = ({
 
   return (
     <div className="relative w-full h-full flex flex-col bg-black overflow-hidden select-none">
-      {/* Top Header Bar */}
-      <HeaderBar
-        timerSeconds={timerSeconds}
-        onToggleTimer={handleToggleTimer}
-        isTorchOn={isTorchOn}
-        onToggleTorch={handleToggleTorch}
-        facingMode={facingMode}
-        onToggleFacingMode={handleToggleFacingMode}
-        onOpenStickers={onOpenStickers}
-      />
-
-      {/* Main Viewport: Live Camera Feed */}
+      {/* Main Viewport: Clean Fullscreen Live Camera Feed */}
       <div className="relative flex-1 w-full h-full flex items-center justify-center p-2 sm:p-3 overflow-hidden">
-        <div className="relative w-full max-w-[420px] aspect-story max-h-full rounded-[26px] overflow-hidden shadow-[0_25px_60px_rgba(0,0,0,0.8)] bg-black border border-white/10 flex items-center justify-center">
+        <div className="relative w-full max-w-[420px] aspect-story max-h-full rounded-[28px] overflow-hidden shadow-[0_25px_60px_rgba(0,0,0,0.8)] bg-black border border-white/10 flex items-center justify-center">
           {/* Live Video Feed */}
           <video
             ref={videoRef}
@@ -173,27 +118,9 @@ export const CameraView: React.FC<CameraViewProps> = ({
             className={`w-full h-full object-cover ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
           />
 
-          {/* Bottom FORD RACING Banner Overlay as in Page 3 mockup */}
-          <div className="absolute bottom-4 left-0 right-0 z-20 flex justify-center pointer-events-none">
-            <div className="px-5 py-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/15 shadow-lg">
-              <span className="font-sans font-black text-xs sm:text-sm tracking-[0.25em] text-white uppercase">
-                FORD RACING
-              </span>
-            </div>
-          </div>
-
           {/* Shutter White Flash Animation */}
           {showFlash && (
             <div className="absolute inset-0 bg-white z-40 animate-flash pointer-events-none" />
-          )}
-
-          {/* Countdown Display */}
-          {countdown !== null && (
-            <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/35 backdrop-blur-sm">
-              <div className="text-[7rem] font-bold text-white tracking-tight drop-shadow-[0_10px_30px_rgba(0,0,0,0.8)] font-sans animate-apple-fade-in">
-                {countdown}
-              </div>
-            </div>
           )}
 
           {/* Camera Permission Error Overlay */}
@@ -228,9 +155,9 @@ export const CameraView: React.FC<CameraViewProps> = ({
         </div>
       </div>
 
-      {/* Bottom Controls Area matching Page 3 */}
+      {/* Bottom Controls Bar: Gallery, Shutter, Flip Camera */}
       <div className="relative z-20 pb-7 pt-2 flex items-center justify-between max-w-xs mx-auto w-full px-6">
-        {/* Left: Session Gallery Square Thumbnail */}
+        {/* Left: Gallery Thumbnail Square */}
         <button
           onClick={onOpenGallery}
           className="w-12 h-12 rounded-[14px] apple-glass flex items-center justify-center overflow-hidden border border-white/30 shadow-md apple-button"
@@ -247,16 +174,17 @@ export const CameraView: React.FC<CameraViewProps> = ({
           )}
         </button>
 
-        {/* Central Apple iOS Camera Shutter Button */}
+        {/* Center: Apple / Instagram Circular Shutter Button */}
         <button
-          onClick={handleTriggerCapture}
+          onClick={executeCapture}
           disabled={isCapturing}
-          className="group relative flex items-center justify-center w-[74px] h-[74px] rounded-full apple-shutter-ring focus:outline-none"
+          className="group relative flex items-center justify-center w-[76px] h-[76px] rounded-full apple-shutter-ring focus:outline-none"
+          title="Scatta foto"
         >
-          {/* Outer Ring */}
-          <div className="absolute inset-0 rounded-full border-[3px] border-white shadow-[0_0_20px_rgba(255,255,255,0.3)]" />
-          {/* Inner Circle */}
-          <div className="w-[60px] h-[60px] rounded-full bg-white group-active:scale-90 transition-transform duration-100 ease-out shadow-inner" />
+          {/* Outer White Ring */}
+          <div className="absolute inset-0 rounded-full border-[3px] border-white shadow-[0_0_22px_rgba(255,255,255,0.35)]" />
+          {/* Inner White Shutter Circle */}
+          <div className="w-[62px] h-[62px] rounded-full bg-white group-active:scale-90 transition-transform duration-100 ease-out shadow-inner" />
         </button>
 
         {/* Right: Quick Flip Camera Button */}

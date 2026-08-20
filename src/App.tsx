@@ -51,7 +51,6 @@ export const App: React.FC = () => {
   };
 
   const handleSelectSticker = (sticker: StickerItem) => {
-    // If not in editor yet, we can transition to camera or editor
     if (currentStep === 'landing') {
       setCurrentStep('camera');
     }
@@ -71,11 +70,10 @@ export const App: React.FC = () => {
         />
       )}
 
-      {/* Screen 2: Real-time Camera View (Page 3) */}
+      {/* Screen 2: Real-time Camera View (Clean Instagram Camera) */}
       {currentStep === 'camera' && (
         <CameraView
           onPhotoCaptured={handlePhotoCaptured}
-          onOpenStickers={() => setIsStickersModalOpen(true)}
           onOpenGallery={() => setIsGalleryModalOpen(true)}
           lastPhoto={lastPhoto}
         />
@@ -95,11 +93,10 @@ export const App: React.FC = () => {
         <ExportView
           compositeDataUrl={compositeDataUrl}
           onRetake={handleRetakeAll}
-          onOpenGallery={() => setIsGalleryModalOpen(true)}
         />
       )}
 
-      {/* Global Stickers Modal (Page 3 Right) */}
+      {/* Global Stickers Modal (for Landing) */}
       <StickersModal
         isOpen={isStickersModalOpen}
         onClose={() => setIsStickersModalOpen(false)}

@@ -4,14 +4,12 @@ import {
   Download,
   Copy,
   RotateCcw,
-  CheckCircle2,
-  Share2
+  CheckCircle2
 } from 'lucide-react';
 
 interface ExportViewProps {
   compositeDataUrl: string;
   onRetake: () => void;
-  onOpenGallery?: () => void;
 }
 
 const InstagramIcon: React.FC<{ className?: string }> = ({ className = "w-5 h-5" }) => (
@@ -71,45 +69,21 @@ export const ExportView: React.FC<ExportViewProps> = ({
   };
 
   return (
-    <div className="relative w-full h-full flex flex-col bg-black overflow-y-auto overflow-x-hidden select-none pb-6">
-      {/* Top Bar with Apple Glass */}
-      <header className="sticky top-0 z-30 flex items-center justify-between px-5 py-3.5 bg-black/50 backdrop-blur-xl border-b border-white/[0.08]">
-        <div className="flex items-center gap-2 px-3 py-1 rounded-full apple-glass">
-          <div className="w-2 h-2 rounded-full bg-[#0032ff]" />
-          <span className="font-bold text-xs text-white tracking-[-0.01em]">
-            InstaFord
-          </span>
-        </div>
-
-        <button
-          onClick={onRetake}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full apple-glass apple-button text-white/90 hover:text-white text-xs font-medium"
-        >
-          <RotateCcw className="w-3.5 h-3.5" />
-          <span>Nuovo Scatto</span>
-        </button>
-      </header>
-
+    <div className="relative w-full h-full flex flex-col bg-black overflow-y-auto overflow-x-hidden select-none px-4 py-6">
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col items-center justify-start px-4 py-4 max-w-md mx-auto w-full gap-4">
-        {/* 9:16 High-Res Rendered Image Preview Card */}
-        <div className="relative w-full max-w-[320px] aspect-story rounded-[24px] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.8)] border border-white/15 bg-black group">
+      <div className="flex-1 flex flex-col items-center justify-center max-w-md mx-auto w-full gap-5">
+        {/* Clean 9:16 High-Res Rendered Image Preview Card (No top badges) */}
+        <div className="relative w-full max-w-[320px] aspect-story rounded-[28px] overflow-hidden shadow-[0_25px_60px_rgba(0,0,0,0.85)] border border-white/15 bg-black">
           <img
             src={compositeDataUrl}
             alt="InstaFord Photo"
             className="w-full h-full object-cover"
           />
-
-          {/* Instagram Story Capsule Badge */}
-          <div className="absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full apple-glass text-[10px] font-medium text-white shadow-lg">
-            <InstagramIcon className="w-3 h-3 text-pink-400" />
-            <span>Story 9:16</span>
-          </div>
         </div>
 
-        {/* Action Buttons with Apple tactile styling */}
+        {/* Action Buttons Area matching media_1787259751202.png */}
         <div className="w-full flex flex-col gap-2.5 max-w-[320px]">
-          {/* Primary Button: Share to Instagram (Web Share API) */}
+          {/* Primary Button: Share to Instagram (Gradient Button) */}
           <button
             onClick={handleShare}
             disabled={isSharing}
@@ -119,7 +93,7 @@ export const ExportView: React.FC<ExportViewProps> = ({
             <span>{isSharing ? 'Apertura Condivisione...' : 'Condividi su Instagram'}</span>
           </button>
 
-          {/* Secondary Button: Download JPG */}
+          {/* Secondary Button: Download to Gallery (Solid White Button) */}
           <button
             onClick={handleDownload}
             className="w-full py-3.5 px-6 rounded-[18px] bg-white text-black hover:bg-white/90 font-semibold text-xs tracking-[-0.01em] flex items-center justify-center gap-2 shadow-md apple-button"
@@ -128,7 +102,7 @@ export const ExportView: React.FC<ExportViewProps> = ({
             <span>Salva Foto in Galleria</span>
           </button>
 
-          {/* Tertiary Row: Copy + Retake */}
+          {/* Tertiary Row: Copia + Rifai */}
           <div className="grid grid-cols-2 gap-2.5 w-full">
             <button
               onClick={handleCopy}
@@ -149,12 +123,12 @@ export const ExportView: React.FC<ExportViewProps> = ({
         </div>
 
         {/* Brand Footer */}
-        <div className="mt-2 text-center text-[10px] text-white/30 font-medium tracking-wide">
+        <div className="mt-1 text-center text-[10px] text-white/30 font-medium tracking-wide">
           INSTAFORD • OFFICIAL FORD SELFIE EXPERIENCE
         </div>
       </div>
 
-      {/* Apple Dynamic Island / Capsule Toast */}
+      {/* Dynamic Island Toast */}
       {toastMessage && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2.5 rounded-full apple-glass-heavy text-white text-xs font-medium border border-white/20 shadow-[0_10px_30px_rgba(0,0,0,0.8)] animate-apple-fade-in">
           <CheckCircle2 className="w-4 h-4 text-emerald-400" />
