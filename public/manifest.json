@@ -1,17 +1,17 @@
 {
-  "name": "Ford Adventure Photo Booth",
-  "short_name": "Ford PhotoBooth",
-  "description": "Scatta, personalizza e condividi la tua avventura 4x4 Ford allo stand",
+  "name": "InstaFord - Official Ford Selfie Experience",
+  "short_name": "InstaFord",
+  "description": "Take your official Ford selfie. Scatta la tua foto, indossa i caschi e aggiungi gli sticker ufficiali Ford Racing ed F1 per le tue Instagram Stories.",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0B0F19",
-  "theme_color": "#002C6C",
+  "background_color": "#000000",
+  "theme_color": "#0032ff",
   "icons": [
     {
-      "src": "/favicon.svg",
+      "src": "/assets/branding/casco_simbolo.png",
       "sizes": "192x192 512x512",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]
