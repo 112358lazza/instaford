@@ -1,5 +1,4 @@
 import React from 'react';
-import { RefreshCw } from 'lucide-react';
 import { CapturedPhoto } from '../types';
 
 interface LandingScreenProps {
@@ -44,7 +43,7 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({
         </div>
       </div>
 
-      {/* Bottom Controls Area matching Page 2 mockup */}
+      {/* Bottom Controls Area */}
       <div className="relative z-10 flex flex-col items-center gap-6 pb-6">
         {/* Stickers Floating Pill Button */}
         <div className="flex justify-center">
@@ -98,14 +97,8 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({
             <div className="w-[62px] h-[62px] rounded-full bg-white group-active:scale-90 transition-transform duration-100 ease-out shadow-inner" />
           </button>
 
-          {/* Flip Camera Icon Button */}
-          <button
-            onClick={onStart}
-            className="p-3.5 rounded-full apple-glass apple-button text-white shadow-md"
-            title="Avvia fotocamera"
-          >
-            <RefreshCw className="w-5 h-5" />
-          </button>
+          {/* Spacer */}
+          <div className="w-12 h-12" />
         </div>
       </div>
     </div>

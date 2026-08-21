@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { CameraFacingMode, CapturedPhoto } from '../types';
 import { cameraService } from '../services/camera';
 import { soundService } from '../services/soundEffects';
-import { RefreshCcw, AlertCircle, Image as ImageIcon } from 'lucide-react';
+import { AlertCircle, Image as ImageIcon } from 'lucide-react';
 
 interface CameraViewProps {
   onPhotoCaptured: (photo: CapturedPhoto) => void;
@@ -19,18 +19,17 @@ export const CameraView: React.FC<CameraViewProps> = ({
 
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
-  const [facingMode, setFacingMode] = useState<CameraFacingMode>('user');
+  const [facingMode] = useState<CameraFacingMode>('user');
   const [isCapturing, setIsCapturing] = useState(false);
   const [showFlash, setShowFlash] = useState(false);
 
-  // Initialize and start camera stream
+  // Initialize and start camera stream (Selfie / Front camera default)
   const initCamera = useCallback(async (mode: CameraFacingMode) => {
     if (!videoRef.current) return;
     setCameraError(null);
     try {
       await cameraService.startCamera(videoRef.current, mode);
       setIsCameraActive(true);
-      setFacingMode(mode);
     } catch (err) {
       console.warn('Camera start error:', err);
       setCameraError(
@@ -46,13 +45,6 @@ export const CameraView: React.FC<CameraViewProps> = ({
       cameraService.stopCamera();
     };
   }, [initCamera, facingMode]);
-
-  // Switch Camera
-  const handleToggleFacingMode = async () => {
-    const nextMode: CameraFacingMode = facingMode === 'user' ? 'environment' : 'user';
-    setFacingMode(nextMode);
-    await initCamera(nextMode);
-  };
 
   // Capture Photo
   const executeCapture = () => {
@@ -115,7 +107,7 @@ export const CameraView: React.FC<CameraViewProps> = ({
             playsInline
             autoPlay
             muted
-            className={`w-full h-full object-cover ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
+            className="w-full h-full object-cover scale-x-[-1]"
           />
 
           {/* Shutter White Flash Animation */}
@@ -135,7 +127,6 @@ export const CameraView: React.FC<CameraViewProps> = ({
                   onClick={() => initCamera(facingMode)}
                   className="flex items-center justify-center gap-2 py-3 px-4 rounded-[14px] bg-[#0032ff] text-white font-medium text-xs tracking-[-0.01em] shadow-md apple-button"
                 >
-                  <RefreshCcw className="w-3.5 h-3.5" />
                   Riprova Accesso
                 </button>
 
@@ -155,46 +146,42 @@ export const CameraView: React.FC<CameraViewProps> = ({
         </div>
       </div>
 
-      {/* Bottom Controls Bar: Gallery, Shutter, Flip Camera */}
-      <div className="relative z-20 pb-7 pt-2 flex items-center justify-between max-w-xs mx-auto w-full px-6">
-        {/* Left: Gallery Thumbnail Square */}
-        <button
-          onClick={onOpenGallery}
-          className="w-12 h-12 rounded-[14px] apple-glass flex items-center justify-center overflow-hidden border border-white/30 shadow-md apple-button"
-          title="Galleria foto scattate"
-        >
-          {lastPhoto ? (
-            <img
-              src={lastPhoto.dataUrl}
-              alt="Ultima foto"
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <ImageIcon className="w-5 h-5 text-white/70" />
-          )}
-        </button>
+      {/* Bottom Controls Bar: Gallery on left & Centered Shutter */}
+      <div className="relative z-20 pb-7 pt-2 flex items-center justify-center max-w-xs mx-auto w-full px-6">
+        <div className="w-full flex items-center justify-between">
+          {/* Left: Gallery Thumbnail Square */}
+          <button
+            onClick={onOpenGallery}
+            className="w-12 h-12 rounded-[14px] apple-glass flex items-center justify-center overflow-hidden border border-white/30 shadow-md apple-button"
+            title="Galleria foto scattate"
+          >
+            {lastPhoto ? (
+              <img
+                src={lastPhoto.dataUrl}
+                alt="Ultima foto"
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <ImageIcon className="w-5 h-5 text-white/70" />
+            )}
+          </button>
 
-        {/* Center: Apple / Instagram Circular Shutter Button */}
-        <button
-          onClick={executeCapture}
-          disabled={isCapturing}
-          className="group relative flex items-center justify-center w-[76px] h-[76px] rounded-full apple-shutter-ring focus:outline-none"
-          title="Scatta foto"
-        >
-          {/* Outer White Ring */}
-          <div className="absolute inset-0 rounded-full border-[3px] border-white shadow-[0_0_22px_rgba(255,255,255,0.35)]" />
-          {/* Inner White Shutter Circle */}
-          <div className="w-[62px] h-[62px] rounded-full bg-white group-active:scale-90 transition-transform duration-100 ease-out shadow-inner" />
-        </button>
+          {/* Center: Apple / Instagram Circular Shutter Button */}
+          <button
+            onClick={executeCapture}
+            disabled={isCapturing}
+            className="group relative flex items-center justify-center w-[76px] h-[76px] rounded-full apple-shutter-ring focus:outline-none"
+            title="Scatta selfie"
+          >
+            {/* Outer White Ring */}
+            <div className="absolute inset-0 rounded-full border-[3px] border-white shadow-[0_0_22px_rgba(255,255,255,0.35)]" />
+            {/* Inner White Shutter Circle */}
+            <div className="w-[62px] h-[62px] rounded-full bg-white group-active:scale-90 transition-transform duration-100 ease-out shadow-inner" />
+          </button>
 
-        {/* Right: Quick Flip Camera Button */}
-        <button
-          onClick={handleToggleFacingMode}
-          className="w-12 h-12 rounded-[14px] apple-glass flex items-center justify-center apple-button text-white/90 hover:text-white shadow-md"
-          title="Ruota fotocamera"
-        >
-          <RefreshCcw className="w-5 h-5" />
-        </button>
+          {/* Spacer to balance gallery button */}
+          <div className="w-12 h-12" />
+        </div>
       </div>
     </div>
   );

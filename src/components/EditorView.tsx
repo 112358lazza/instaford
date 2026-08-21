@@ -9,7 +9,6 @@ import {
   RotateCw,
   Trash2,
   FlipHorizontal,
-  Type,
   BringToFront,
   SendToBack,
   Sparkles
@@ -84,11 +83,6 @@ export const EditorView: React.FC<EditorViewProps> = ({
     await fabricCanvasManager.addHelmetSticker(sticker.imageSrc, sticker.defaultScale || 0.38);
   };
 
-  // Add Text
-  const handleAddText = () => {
-    fabricCanvasManager.addText('FORD RACING');
-  };
-
   // Finish & Export
   const handleComplete = () => {
     const compositeDataUrl = fabricCanvasManager.exportComposite('jpeg', 0.96);
@@ -97,18 +91,18 @@ export const EditorView: React.FC<EditorViewProps> = ({
 
   return (
     <div className="relative w-full h-full flex flex-col bg-black overflow-hidden select-none">
-      {/* Top Instagram-style Action Bar */}
+      {/* Top Action Bar: Scatta, Undo/Redo, Avanti (NO TESTO) */}
       <header className="relative z-30 flex items-center justify-between px-4 py-3 bg-black/40 backdrop-blur-xl border-b border-white/[0.08]">
         {/* Back / Retake Button */}
         <button
           onClick={onBackToCamera}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full apple-glass apple-button text-white/90 hover:text-white text-xs font-medium tracking-[-0.01em]"
+          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full apple-glass apple-button text-white/90 hover:text-white text-xs font-medium tracking-[-0.01em]"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>Scatta</span>
         </button>
 
-        {/* Action Controls: Undo, Redo, Add Text, Stickers Quick Trigger */}
+        {/* Action Controls: Undo & Redo only */}
         <div className="flex items-center gap-1.5 p-1 rounded-full apple-glass">
           <button
             onClick={() => fabricCanvasManager.undo()}
@@ -123,15 +117,6 @@ export const EditorView: React.FC<EditorViewProps> = ({
             title="Ripristina"
           >
             <RotateCw className="w-3.5 h-3.5" />
-          </button>
-          <div className="w-px h-3.5 bg-white/15 mx-0.5" />
-          <button
-            onClick={handleAddText}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-full apple-button text-white/90 hover:text-white text-xs font-medium"
-            title="Aggiungi Testo"
-          >
-            <Type className="w-3.5 h-3.5" />
-            <span className="hidden xs:inline">Testo</span>
           </button>
         </div>
 
@@ -157,25 +142,9 @@ export const EditorView: React.FC<EditorViewProps> = ({
             className="w-full h-full object-contain"
           />
 
-          {/* Floating Instagram-style Stickers Trigger (Helmet Icon) on the photo */}
-          <button
-            onClick={() => setIsStickersModalOpen(true)}
-            className="absolute top-4 right-4 z-40 p-3 rounded-full apple-glass-heavy shadow-2xl border border-white/20 apple-button group flex items-center gap-2"
-            title="Aggiungi Stickers"
-          >
-            <img
-              src="/assets/branding/casco_simbolo.png"
-              alt="Aggiungi Stickers"
-              className="w-6 h-6 object-contain group-hover:scale-110 transition-transform"
-            />
-            <span className="text-[11px] font-bold text-white uppercase tracking-wider hidden sm:inline">
-              Stickers
-            </span>
-          </button>
-
-          {/* Floating Sticker Action Capsule (when an active sticker is selected) */}
+          {/* Floating Sticker Setting Pill: MOVED TO TOP-LEFT IN ACCORDANCE WITH USER DRAWING */}
           {hasSelection && (
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1 p-1 rounded-full apple-glass-heavy shadow-2xl animate-apple-fade-in">
+            <div className="absolute top-3.5 left-3.5 z-40 flex items-center gap-1 p-1 rounded-full apple-glass-heavy shadow-2xl border border-white/15 animate-apple-fade-in">
               <button
                 onClick={() => fabricCanvasManager.flipActiveObject()}
                 className="p-2 rounded-full apple-button text-white/85 hover:text-white"
@@ -221,7 +190,7 @@ export const EditorView: React.FC<EditorViewProps> = ({
         </div>
       </div>
 
-      {/* Bottom Floating Bar with Big Stickers Button */}
+      {/* Bottom Center Bar: Only SCEGLI STICKER Button */}
       <footer className="relative z-30 pb-6 pt-2 px-6 flex items-center justify-center">
         <button
           onClick={() => setIsStickersModalOpen(true)}
@@ -233,7 +202,7 @@ export const EditorView: React.FC<EditorViewProps> = ({
             className="w-5 h-5 object-contain"
           />
           <span className="font-bold text-xs uppercase tracking-wider">
-            Scegli Sticker
+            SCEGLI STICKER
           </span>
         </button>
       </footer>
